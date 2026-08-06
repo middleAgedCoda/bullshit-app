@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bullshit™ — Know what you're looking at</title>
+<meta name="theme-color" content="#14140F">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-row">
+      <div>
+        <span class="wordmark">Bullshit<sup>™</sup></span>
+        <span class="tagline">know what you're looking at</span>
+      </div>
+      <button id="settingsToggle" class="gear-btn" aria-label="API key settings">⚙</button>
+    </div>
+    <div class="settings-panel hidden" id="settingsPanel">
+      <p class="settings-hint">Bullshit runs on free, open-weight model APIs — you just paste in your own key. Nothing leaves your device except the direct call to that provider.</p>
+      <label class="settings-label" for="groqKey">Groq API key (recommended — free & fast)</label>
+      <input type="password" id="groqKey" placeholder="gsk_...">
+      <label class="settings-label" for="orKey">OpenRouter API key (fallback, optional)</label>
+      <input type="password" id="orKey" placeholder="sk-or-...">
+      <button id="saveKeysBtn" class="btn-secondary">Save keys</button>
+    </div>
+  </header>
+
+  <main class="stage">
+
+    <section class="intake" id="intake">
+      <label for="inputField" class="intake-label">Paste a headline, claim, or link</label>
+      <textarea id="inputField" placeholder="e.g. &quot;Scientists HATE this one weird trick doctors don't want you to know&quot;" rows="4"></textarea>
+      <button id="analyzeBtn" class="btn-primary">Run it through Bullshit</button>
+      <p class="intake-hint">Or install this app and use your phone's Share button — Bullshit will show up as a target.</p>
+    </section>
+
+    <section class="loading hidden" id="loading">
+      <div class="stamp-loading">ANALYZING…</div>
+      <div class="perf-line"></div>
+    </section>
+
+    <section class="receipt-wrap hidden" id="receiptWrap">
+      <div class="receipt" id="receipt">
+        <!-- populated by js/app.js -->
+      </div>
+      <button id="againBtn" class="btn-secondary">Run another</button>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    <a href="https://kuro-digital-acid-lime.onrender.com" target="_blank" rel="noopener">Kuro Digital</a>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

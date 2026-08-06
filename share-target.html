@@ -12,7 +12,7 @@
     const params = new URLSearchParams(window.location.search);
     const payload = params.get('url') || params.get('text') || params.get('title') || '';
     // Forward straight into the main app, which reads ?input= on load and auto-runs analysis
-    window.location.replace('/index.html?input=' + encodeURIComponent(payload) + '&auto=1');
+    window.location.replace('/bullshit-app/index.html?input=' + encodeURIComponent(payload) + '&auto=1');
   </script>
 </body>
 </html>

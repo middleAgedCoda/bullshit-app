@@ -1,12 +1,12 @@
 const CACHE_NAME = 'bullshit-v1';
 const SHELL_FILES = [
-  '/index.html',
-  '/share-target.html',
-  '/css/style.css',
-  '/js/app.js',
-  '/js/heuristics.js',
-  '/js/llm-mesh.js',
-  '/manifest.json'
+  '/bullshit-app/index.html',
+  '/bullshit-app/share-target.html',
+  '/bullshit-app/css/style.css',
+  '/bullshit-app/js/app.js',
+  '/bullshit-app/js/heuristics.js',
+  '/bullshit-app/js/llm-mesh.js',
+  '/bullshit-app/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {

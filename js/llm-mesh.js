@@ -142,6 +142,21 @@ const PROVIDERS = [
   { name: 'huggingface', call: callHuggingFace, keyName: 'hf' }
 ];
 
+export async function analyzeImageWithMesh(imageDataUrl){
+  const imageProxyUrl = PROXY_URL.replace('/analyze', '/analyze-image');
+  const res = await fetch(imageProxyUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageDataUrl })
+  });
+  if(res.status === 429){
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.note || 'rate_limited');
+  }
+  if(!res.ok) throw new Error('image_analysis_failed_' + res.status);
+  return res.json();
+}
+
 export async function analyzeWithMesh(text){
   // Shared proxy first — this is what makes analysis work for every
   // visitor with zero setup. Only falls through to a user's own key

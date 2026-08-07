@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bullshit-v1';
+const CACHE_NAME = 'bullshit-v2';
 const SHELL_FILES = [
   '/bullshit-app/index.html',
   '/bullshit-app/share-target.html',
@@ -6,6 +6,7 @@ const SHELL_FILES = [
   '/bullshit-app/js/app.js',
   '/bullshit-app/js/heuristics.js',
   '/bullshit-app/js/llm-mesh.js',
+  '/bullshit-app/js/taxonomy.js',
   '/bullshit-app/manifest.json'
 ];
 

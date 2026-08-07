@@ -50,7 +50,7 @@ export function hasAnyKey(){
 }
 
 // Set this to your deployed Render URL, e.g. 'https://bullshit-proxy.onrender.com'
-const PROXY_URL = 'https://bullshit-proxy.onrender.com/analyze';
+const PROXY_URL = 'https://polished-fire-59b0.brentonchimzy2802.workers.dev/analyze';
 
 async function callSharedProxy(text){
   const res = await fetch(PROXY_URL, {

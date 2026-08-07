@@ -1,5 +1,5 @@
 import { scoreContent } from './heuristics.js';
-import { analyzeWithMesh, saveKeys, hasAnyKey } from './llm-mesh.js';
+import { analyzeWithMesh, analyzeImageWithMesh, saveKeys, hasAnyKey } from './llm-mesh.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,6 +23,46 @@ saveKeysBtn.addEventListener('click', () => {
   saveKeys({ groq: groqKeyInput.value.trim(), openrouter: orKeyInput.value.trim() });
   settingsPanel.classList.add('hidden');
 });
+
+// ---- Camera capture ----
+const cameraInput = $('cameraInput');
+cameraInput.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+
+  const dataUrl = await fileToDataUrl(file);
+
+  intake.classList.add('hidden');
+  loading.classList.remove('hidden');
+  receiptWrap.classList.add('hidden');
+
+  try{
+    const result = await analyzeImageWithMesh(dataUrl);
+    loading.classList.add('hidden');
+    renderReceipt(result);
+    receiptWrap.classList.remove('hidden');
+  }catch(err){
+    loading.classList.add('hidden');
+    renderReceipt({
+      verdict: 'caution',
+      score: 0,
+      note: 'Could not analyze that image — try again, or type/paste the text instead.',
+      tricks: [],
+      source: 'error'
+    });
+    receiptWrap.classList.remove('hidden');
+  }
+  cameraInput.value = ''; // allow re-selecting the same file next time
+});
+
+function fileToDataUrl(file){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 // ---- Run analysis ----
 analyzeBtn.addEventListener('click', () => runAnalysis(inputField.value));

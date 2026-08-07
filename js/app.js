@@ -75,7 +75,7 @@ function heuristicOnlyResult(h, noKeyOrFailed){
     verdict,
     score: h.score,
     note: noKeyOrFailed
-      ? 'Heuristic read only — add a free API key in Settings for deeper analysis on ambiguous content.'
+      ? 'Deeper analysis is temporarily unavailable — showing the structural read instead.'
       : 'Strong enough structural signal to call this without a model.',
     tricks: h.matchedTricks,
     domain: h.domain,
@@ -119,7 +119,6 @@ function renderReceipt(r){
     <div class="receipt-title">Bullshit™ Receipt</div>
     <div class="receipt-row"><span class="k">BS Score</span><span class="v">${r.score}/100</span></div>
     ${r.domain ? `<div class="receipt-row"><span class="k">Source</span><span class="v">${escapeHtml(r.domain)}</span></div>` : ''}
-    <div class="receipt-row"><span class="k">Engine</span><span class="v">${escapeHtml(r.source)}</span></div>
     <hr class="receipt-divider">
     <div class="verdict-stamp ${v.cls}">${v.label}</div>
     <p class="receipt-note">${escapeHtml(r.note)}</p>

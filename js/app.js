@@ -46,7 +46,7 @@ cameraInput.addEventListener('change', async (e) => {
     renderReceipt({
       verdict: 'caution',
       score: 0,
-      note: 'Could not analyze that image — try again, or type/paste the text instead.',
+      note: 'DEBUG — actual error: ' + (err && err.message ? err.message : String(err)),
       tricks: [],
       source: 'error'
     });
@@ -56,10 +56,25 @@ cameraInput.addEventListener('change', async (e) => {
 });
 
 function fileToDataUrl(file){
+  // Resize/compress first — raw phone camera photos are often 3-5MB+,
+  // which can exceed what the vision API accepts or time out on mobile
+  // upload. Cap at 1024px wide, JPEG quality 0.75.
   return new Promise((resolve, reject) => {
+    const img = new Image();
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
+    reader.onload = () => { img.src = reader.result; };
     reader.onerror = reject;
+    img.onload = () => {
+      const maxWidth = 1024;
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', 0.75));
+    };
+    img.onerror = reject;
     reader.readAsDataURL(file);
   });
 }

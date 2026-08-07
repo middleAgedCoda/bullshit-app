@@ -1,4 +1,6 @@
 // heuristics.js
+import { findTaxonomy } from './taxonomy.js';
+
 // Deterministic, zero-API-cost scoring layer. This runs on every single
 // analysis. The LLM mesh is only consulted when this layer is not
 // confident (see app.js escalation logic), which is what keeps
@@ -65,6 +67,11 @@ function punctuationExcess(text){
   return bangs + qmarks;
 }
 
+function toTrick(taxonomyId){
+  const t = findTaxonomy(taxonomyId);
+  return { name: t.name, explain: t.explain };
+}
+
 function extractDomain(text){
   const m = text.match(/https?:\/\/([^\/\s]+)/i);
   return m ? m[1].replace(/^www\./,'').toLowerCase() : null;
@@ -117,26 +124,11 @@ export function scoreContent(rawText){
   }
 
   const matchedTricks = [];
-  if(clickbaitHits > 0) matchedTricks.push({
-    name: 'Curiosity gap / clickbait framing',
-    explain: 'Withholds the actual information to force a click, rather than leading with the fact.'
-  });
-  if(emotionalHits > 0) matchedTricks.push({
-    name: 'Emotional manipulation',
-    explain: 'Charged language is used to trigger a reaction before you\'ve evaluated the claim.'
-  });
-  if(urgencyHits > 0) matchedTricks.push({
-    name: 'Manufactured urgency',
-    explain: 'Pressure to act or believe immediately, which short-circuits normal scrutiny.'
-  });
-  if(sellingHits > 0) matchedTricks.push({
-    name: 'Undisclosed selling intent',
-    explain: 'Language patterns common to advertising or affiliate content dressed as neutral info.'
-  });
-  if(caps > 0.3) matchedTricks.push({
-    name: 'Excessive capitalization',
-    explain: 'ALL CAPS is used to simulate shouting or urgency rather than to inform.'
-  });
+  if(clickbaitHits > 0) matchedTricks.push(toTrick('curiosity_gap'));
+  if(emotionalHits > 0) matchedTricks.push(toTrick('emotional_manipulation'));
+  if(urgencyHits > 0) matchedTricks.push(toTrick('manufactured_urgency'));
+  if(sellingHits > 0) matchedTricks.push(toTrick('selling_disguised'));
+  if(caps > 0.3) matchedTricks.push(toTrick('shouting'));
 
   return {
     text, domain, score, confidence, isOpinion,

@@ -8,18 +8,29 @@
 // localStorage only — never hardcoded, never sent anywhere but the
 // provider's own endpoint.
 
-const SYSTEM_PROMPT = `You are the analysis engine for Bullshit™, a tool that helps people
+import { taxonomyPromptList } from './taxonomy.js';
+
+function buildSystemPrompt(){
+  return `You are the analysis engine for Bullshit™, a tool that helps people
 see the tactics used in a piece of text — NOT a tool that rules on objective truth.
 You judge tactics: manipulation, missing evidence, framing, selling intent, fallacies.
 You do not declare political or contested claims true/false; you flag them as opinion
 or contested and explain what's missing.
+
+For "tricks", you MUST pick only from this closed taxonomy — use the "name" value
+exactly as written below, do not invent new categories, do not modify the wording:
+${taxonomyPromptList()}
+
+Only include tricks that genuinely apply. It is fine to return zero, one, or several.
+
 Respond with STRICT JSON only, no markdown fences, no preamble, matching this shape:
 {
   "verdict": "bullshit" | "clean" | "opinion" | "caution",
   "score": 0-100,
   "note": "one sentence, plain language, in Bullshit's voice — direct, not preachy",
-  "tricks": [{"name": "short trick name", "explain": "one sentence explaining the tactic generically"}]
+  "tricks": [{"name": "exact name from the taxonomy list above", "explain": "one sentence, can reuse or lightly adapt the taxonomy's explanation"}]
 }`;
+}
 
 function getKeys(){
   try{
@@ -31,9 +42,28 @@ export function saveKeys(keys){
   localStorage.setItem('bs_api_keys', JSON.stringify(keys));
 }
 
+// Everyone can analyze without any key at all, via the shared proxy.
+// hasAnyKey() now reflects that — it's really "can we escalate at all",
+// which is true by default once PROXY_URL is set.
 export function hasAnyKey(){
-  const k = getKeys();
-  return !!(k.groq || k.openrouter || k.hf);
+  return true;
+}
+
+// Set this to your deployed Render URL, e.g. 'https://bullshit-proxy.onrender.com'
+const PROXY_URL = 'https://bullshit-proxy.onrender.com/analyze';
+
+async function callSharedProxy(text){
+  const res = await fetch(PROXY_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text })
+  });
+  if(res.status === 429){
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.note || 'rate_limited');
+  }
+  if(!res.ok) throw new Error('proxy_failed_' + res.status);
+  return res.json(); // already { verdict, score, note, tricks, source } shaped
 }
 
 async function callGroq(text, key){
@@ -48,7 +78,7 @@ async function callGroq(text, key){
       temperature: 0.2,
       max_tokens: 400,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: buildSystemPrompt() },
         { role: 'user', content: text }
       ]
     })
@@ -70,7 +100,7 @@ async function callOpenRouter(text, key){
       temperature: 0.2,
       max_tokens: 400,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: buildSystemPrompt() },
         { role: 'user', content: text }
       ]
     })
@@ -88,7 +118,7 @@ async function callHuggingFace(text, key){
       'Authorization': `Bearer ${key}`
     },
     body: JSON.stringify({
-      inputs: `${SYSTEM_PROMPT}\n\nText to analyze:\n${text}`,
+      inputs: `${buildSystemPrompt()}\n\nText to analyze:\n${text}`,
       parameters: { max_new_tokens: 400, temperature: 0.2, return_full_text: false }
     })
   });
@@ -113,6 +143,17 @@ const PROVIDERS = [
 ];
 
 export async function analyzeWithMesh(text){
+  // Shared proxy first — this is what makes analysis work for every
+  // visitor with zero setup. Only falls through to a user's own key
+  // (if they added one in Settings) if the shared proxy is down or
+  // they've hit the shared rate limit.
+  try{
+    const result = await callSharedProxy(text);
+    return result;
+  }catch(sharedErr){
+    // fall through to personal keys below
+  }
+
   const keys = getKeys();
   let lastError = null;
 
@@ -129,5 +170,5 @@ export async function analyzeWithMesh(text){
     }
   }
 
-  throw new Error(lastError ? lastError.message : 'no_provider_configured');
+  throw new Error(lastError ? lastError.message : 'shared_proxy_unavailable');
 }

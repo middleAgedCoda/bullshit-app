@@ -46,7 +46,7 @@ cameraInput.addEventListener('change', async (e) => {
     renderReceipt({
       verdict: 'caution',
       score: 0,
-      note: 'DEBUG — actual error: ' + (err && err.message ? err.message : String(err)),
+      note: 'Could not analyze that image — try again, or type/paste the text instead.',
       tricks: [],
       source: 'error'
     });

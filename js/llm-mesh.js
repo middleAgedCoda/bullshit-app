@@ -155,7 +155,7 @@ export async function analyzeImageWithMesh(imageDataUrl){
   }
   if(!res.ok){
     const body = await res.json().catch(() => ({}));
-    throw new Error(`HTTP ${res.status}: ${body.error || 'unknown'}`);
+    throw new Error(`HTTP ${res.status}: ${body.detail || body.error || 'unknown'}`);
   }
   return res.json();
 }
@@ -190,4 +190,3 @@ export async function analyzeWithMesh(text){
 
   throw new Error(lastError ? lastError.message : 'shared_proxy_unavailable');
 }
-

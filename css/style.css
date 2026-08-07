@@ -170,6 +170,25 @@ textarea:focus{border-color:var(--amber);}
   cursor:pointer;
 }
 
+.btn-camera{
+  display:block;
+  width:100%;
+  margin-top:0.6rem;
+  padding:0.85rem;
+  background:none;
+  border:1px solid var(--amber);
+  color:var(--amber);
+  border-radius:4px;
+  font-family:var(--mono);
+  font-weight:700;
+  font-size:0.88rem;
+  letter-spacing:0.02em;
+  text-align:center;
+  cursor:pointer;
+  box-sizing:border-box;
+}
+.btn-camera:active{transform:scale(0.98);}
+
 .intake-hint{
   margin-top:0.9rem;
   font-size:0.78rem;

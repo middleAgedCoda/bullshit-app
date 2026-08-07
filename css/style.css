@@ -14,6 +14,12 @@
 
 *{box-sizing:border-box;}
 
+html{
+  /* fluid base size: scales between phones and desktop instead of
+     everything being tuned to one fixed phone width */
+  font-size:clamp(15px, 1.6vw + 10px, 18px);
+}
+
 body{
   margin:0;
   min-height:100vh;
@@ -24,6 +30,15 @@ body{
   font-family:var(--sans);
   display:flex;
   flex-direction:column;
+  align-items:center; /* centers the app column on wide screens */
+}
+
+/* Everything lives inside this max-width column so wide/desktop
+   viewports don't stretch the layout — it just gets more breathing
+   room on the sides instead. */
+.topbar, .stage, .foot{
+  width:100%;
+  max-width:640px;
 }
 
 .topbar{
@@ -47,6 +62,8 @@ body{
   display:flex;
   justify-content:space-between;
   align-items:flex-start;
+  gap:1rem;
+  flex-wrap:wrap;
 }
 .gear-btn{
   background:none;
@@ -55,8 +72,10 @@ body{
   border-radius:4px;
   width:2.2rem;
   height:2.2rem;
+  min-width:2.2rem; /* prevents it shrinking/overlapping when wordmark wraps */
   font-size:1rem;
   cursor:pointer;
+  flex-shrink:0;
 }
 .settings-panel{
   margin-top:1rem;
@@ -108,7 +127,7 @@ body{
   display:flex;
   flex-direction:column;
   align-items:center;
-  padding:1rem 1.2rem 2rem;
+  padding:1rem clamp(1rem, 4vw, 2rem) 2rem;
 }
 
 .hidden{display:none !important;}
@@ -116,7 +135,7 @@ body{
 /* ---- Intake ---- */
 .intake{
   width:100%;
-  max-width:520px;
+  max-width:32rem;
   margin-top:1rem;
 }
 .intake-label{
@@ -230,7 +249,7 @@ textarea:focus{border-color:var(--amber);}
 /* ---- Receipt ---- */
 .receipt-wrap{
   width:100%;
-  max-width:420px;
+  max-width:26rem;
   display:flex;
   flex-direction:column;
   align-items:center;

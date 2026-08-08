@@ -165,10 +165,12 @@ export async function analyzeWithMesh(text){
   // visitor with zero setup. Only falls through to a user's own key
   // (if they added one in Settings) if the shared proxy is down or
   // they've hit the shared rate limit.
+  let sharedErrMessage = null;
   try{
     const result = await callSharedProxy(text);
     return result;
   }catch(sharedErr){
+    sharedErrMessage = sharedErr.message;
     // fall through to personal keys below
   }
 
@@ -188,5 +190,7 @@ export async function analyzeWithMesh(text){
     }
   }
 
-  throw new Error(lastError ? lastError.message : 'shared_proxy_unavailable');
+  // Preserve the shared proxy's specific reason (e.g. rate limit note)
+  // rather than a generic label, so the UI can show something useful.
+  throw new Error(lastError ? lastError.message : (sharedErrMessage || 'shared_proxy_unavailable'));
 }

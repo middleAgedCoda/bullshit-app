@@ -228,23 +228,21 @@ function resolveIconSvg(iconId, className){
 
 function buildCaptureHtml(r){
   // A parallel, capture-safe version of the receipt: no <details>
-  // (html2canvas renders these with stray numbering), no <use> icon
-  // references — just plain divs and fully-inlined SVGs. Used only
-  // for the shared image; the on-screen interactive receipt is
-  // untouched.
+  // (html2canvas renders these with stray numbering), and no SVG icons
+  // at all — html2canvas's inline SVG support is unreliable enough
+  // (nested <svg>/<path>, currentColor inheritance) that it was very
+  // likely silently dropping the whole stamp element, not just the
+  // icon. The border/color/text already carry the visual identity
+  // without it.
   const v = VERDICT_LABELS[r.verdict] || VERDICT_LABELS.caution;
-  const stampIcon = resolveIconSvg(v.icon, 'stamp-icon');
 
   const tricksHtml = (r.tricks && r.tricks.length)
     ? `<div class="tricks">
         ${r.tricks.map(t => {
-          const taxEntry = findTaxonomyByName(t.name);
-          const iconId = t.icon || (taxEntry && taxEntry.icon);
           const cleanName = t.name.replace(/^\S+\s/, '');
-          const iconHtml = iconId ? resolveIconSvg(iconId, 'trick-icon') : '';
           return `
           <div class="trick-item">
-            <div class="trick-item-title">${iconHtml}<span>${escapeHtml(cleanName)}</span></div>
+            <div class="trick-item-title"><span class="capture-bullet">●</span> <span>${escapeHtml(cleanName)}</span></div>
             <p>${escapeHtml(t.explain)}</p>
           </div>`;
         }).join('')}
@@ -257,7 +255,7 @@ function buildCaptureHtml(r){
     <div class="receipt-row"><span class="k">BS Score</span><span class="v">${r.score}/100</span></div>
     ${r.domain ? `<div class="receipt-row"><span class="k">Source</span><span class="v">${escapeHtml(r.domain)}</span></div>` : ''}
     <hr class="receipt-divider">
-    <div class="verdict-stamp ${v.cls}" style="opacity:1;animation:none;">${stampIcon}${v.label}</div>
+    <div class="verdict-stamp ${v.cls}" style="opacity:1;animation:none;">${v.label}</div>
     <p class="receipt-note">${escapeHtml(r.note)}</p>
     ${tricksHtml}
   `;
@@ -365,7 +363,7 @@ shareReceiptBtn.addEventListener('click', async () => {
 
       shareReceiptBtn.disabled = false;
       shareReceiptBtn.textContent = originalLabel;
-    }, 'image/png');
+    }, 'image/png'); 
 
   }catch(err){
     shareReceiptBtn.disabled = false;

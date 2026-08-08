@@ -140,7 +140,8 @@ async function runAnalysis(raw){
       const llmResult = await analyzeWithMesh(text);
       final = mergeResults(heuristic, llmResult);
     }catch(err){
-      final = heuristicOnlyResult(heuristic, true);
+      const isRateLimit = /Too many analyses|rate_limited/i.test(err.message || '');
+      final = heuristicOnlyResult(heuristic, true, isRateLimit);
     }
   }else{
     final = heuristicOnlyResult(heuristic, shouldEscalate && !hasAnyKey());
@@ -151,18 +152,23 @@ async function runAnalysis(raw){
   receiptWrap.classList.remove('hidden');
 }
 
-function heuristicOnlyResult(h, noKeyOrFailed){
+function heuristicOnlyResult(h, noKeyOrFailed, isRateLimit){
   let verdict = 'clean';
   if(h.isOpinion) verdict = 'opinion';
   else if(h.score >= 60) verdict = 'bullshit';
   else if(h.score >= 30) verdict = 'caution';
 
+  let note = 'Strong enough structural signal to call this without a model.';
+  if(isRateLimit){
+    note = 'You\'ve hit the shared analysis limit for this hour — showing the structural read instead. Try again shortly, or add your own free Groq key in Settings.';
+  }else if(noKeyOrFailed){
+    note = 'Deeper analysis is temporarily unavailable — showing the structural read instead.';
+  }
+
   return {
     verdict,
     score: h.score,
-    note: noKeyOrFailed
-      ? 'Deeper analysis is temporarily unavailable — showing the structural read instead.'
-      : 'Strong enough structural signal to call this without a model.',
+    note,
     tricks: h.matchedTricks,
     domain: h.domain,
     source: 'heuristics'
@@ -202,7 +208,57 @@ function generateBsId(r){
   return `BS-${year}-${positive}`;
 }
 
+function resolveIconSvg(iconId, className){
+  // html2canvas can't reliably render <use> references, even inline
+  // ones — so for anything that might get captured to an image, we
+  // build a standalone <svg> with the real path data embedded directly.
+  const symbol = document.getElementById(iconId);
+  if(!symbol) return '';
+  const viewBox = symbol.getAttribute('viewBox') || '0 0 24 24';
+  return `<svg class="${className}" viewBox="${viewBox}" fill="none" stroke="currentColor">${symbol.innerHTML}</svg>`;
+}
+
+function buildCaptureHtml(r){
+  // A parallel, capture-safe version of the receipt: no <details>
+  // (html2canvas renders these with stray numbering), no <use> icon
+  // references — just plain divs and fully-inlined SVGs. Used only
+  // for the shared image; the on-screen interactive receipt is
+  // untouched.
+  const v = VERDICT_LABELS[r.verdict] || VERDICT_LABELS.caution;
+  const stampIcon = resolveIconSvg(v.icon, 'stamp-icon');
+
+  const tricksHtml = (r.tricks && r.tricks.length)
+    ? `<div class="tricks">
+        ${r.tricks.map(t => {
+          const taxEntry = findTaxonomyByName(t.name);
+          const iconId = t.icon || (taxEntry && taxEntry.icon);
+          const cleanName = t.name.replace(/^\S+\s/, '');
+          const iconHtml = iconId ? resolveIconSvg(iconId, 'trick-icon') : '';
+          return `
+          <div class="trick-item">
+            <div class="trick-item-title">${iconHtml}<span>${escapeHtml(cleanName)}</span></div>
+            <p>${escapeHtml(t.explain)}</p>
+          </div>`;
+        }).join('')}
+       </div>`
+    : '';
+
+  return `
+    <div class="receipt-title">Bullshit™ Receipt</div>
+    <div class="receipt-id">${generateBsId(r)}</div>
+    <div class="receipt-row"><span class="k">BS Score</span><span class="v">${r.score}/100</span></div>
+    ${r.domain ? `<div class="receipt-row"><span class="k">Source</span><span class="v">${escapeHtml(r.domain)}</span></div>` : ''}
+    <hr class="receipt-divider">
+    <div class="verdict-stamp ${v.cls}">${stampIcon}${v.label}</div>
+    <p class="receipt-note">${escapeHtml(r.note)}</p>
+    ${tricksHtml}
+  `;
+}
+
+let lastResult = null;
+
 function renderReceipt(r){
+  lastResult = r;
   const v = VERDICT_LABELS[r.verdict] || VERDICT_LABELS.caution;
 
   const tricksHtml = (r.tricks && r.tricks.length)
@@ -244,7 +300,7 @@ function escapeHtml(s){
 
 // ---- Share receipt as an image ----
 shareReceiptBtn.addEventListener('click', async () => {
-  if(typeof html2canvas === 'undefined'){
+  if(typeof html2canvas === 'undefined' || !lastResult){
     alert('Sharing isn\'t available right now — try again in a moment.');
     return;
   }
@@ -253,10 +309,28 @@ shareReceiptBtn.addEventListener('click', async () => {
   const originalLabel = shareReceiptBtn.textContent;
   shareReceiptBtn.textContent = 'Preparing…';
 
+  // Build a detached, capture-safe copy of the receipt off-screen —
+  // same width as the live one so layout matches exactly, but using
+  // markup html2canvas can actually render correctly.
+  const captureNode = document.createElement('div');
+  captureNode.className = 'receipt';
+  captureNode.style.position = 'fixed';
+  captureNode.style.top = '0';
+  captureNode.style.left = '-9999px';
+  captureNode.style.width = receiptEl.getBoundingClientRect().width + 'px';
+  captureNode.innerHTML = buildCaptureHtml(lastResult);
+  document.body.appendChild(captureNode);
+
   try{
-    const canvas = await html2canvas(receiptEl, {
+    // Custom font must be fully loaded before capture, or html2canvas
+    // silently falls back to a system font and the receipt looks plain.
+    if(document.fonts && document.fonts.ready){
+      await document.fonts.ready;
+    }
+
+    const canvas = await html2canvas(captureNode, {
       backgroundColor: '#EDE7D9',
-      scale: 2 // sharper image for sharing/screenshots
+      scale: 2
     });
 
     canvas.toBlob(async (blob) => {
@@ -273,7 +347,6 @@ shareReceiptBtn.addEventListener('click', async () => {
           // user cancelled the share sheet — not an error, do nothing
         }
       }else{
-        // fallback: trigger a download so the user can share it manually
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -282,11 +355,13 @@ shareReceiptBtn.addEventListener('click', async () => {
         URL.revokeObjectURL(url);
       }
 
+      captureNode.remove();
       shareReceiptBtn.disabled = false;
       shareReceiptBtn.textContent = originalLabel;
     }, 'image/png');
 
   }catch(err){
+    captureNode.remove();
     shareReceiptBtn.disabled = false;
     shareReceiptBtn.textContent = originalLabel;
     alert('Could not generate the receipt image — try again.');
@@ -300,7 +375,7 @@ if(splash){
   if(isShareIntent){
     splash.remove();
   }else{
-    setTimeout(() => splash.remove(), 1700);
+    setTimeout(() => splash.remove(), 2900);
   }
 }
 

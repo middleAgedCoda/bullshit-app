@@ -12,6 +12,47 @@
   --sans:'Inter', -apple-system, sans-serif;
 }
 
+.splash{
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  background:var(--charcoal);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:1rem;
+  animation:splash-fade 1.6s ease forwards;
+}
+.splash-mark{
+  font-family:var(--mono);
+  font-weight:700;
+  font-size:2rem;
+  color:var(--paper);
+  letter-spacing:-0.02em;
+  opacity:0;
+  animation:splash-in 0.5s ease 0.1s forwards;
+}
+.splash-mark sup{ font-size:0.8rem; color:var(--amber); }
+.splash-line{
+  width:2px;
+  height:0;
+  background:var(--stamp-red);
+  animation:splash-line 0.6s ease 0.5s forwards;
+}
+@keyframes splash-in{
+  from{ opacity:0; transform:translateY(8px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+@keyframes splash-line{
+  from{ height:0; }
+  to{ height:32px; }
+}
+@keyframes splash-fade{
+  0%, 70%{ opacity:1; pointer-events:auto; }
+  100%{ opacity:0; pointer-events:none; }
+}
+
 *{box-sizing:border-box;}
 
 html{
@@ -177,8 +218,15 @@ textarea:focus{border-color:var(--amber);}
 }
 .btn-primary:active{transform:scale(0.98);}
 
-.btn-secondary{
+.receipt-actions{
+  display:flex;
+  gap:0.7rem;
   margin-top:1.4rem;
+  flex-wrap:wrap;
+  justify-content:center;
+}
+
+.btn-secondary{
   background:none;
   border:1px solid #33332c;
   color:var(--paper-dim);
@@ -288,6 +336,14 @@ textarea:focus{border-color:var(--amber);}
   margin-bottom:0.8rem;
 }
 
+.receipt-id{
+  text-align:center;
+  font-size:0.65rem;
+  letter-spacing:0.05em;
+  opacity:0.5;
+  margin-bottom:0.8rem;
+}
+
 .receipt-row{
   display:flex;
   justify-content:space-between;
@@ -360,6 +416,34 @@ textarea:focus{border-color:var(--amber);}
   padding:0.15rem 0.5rem;
   border-radius:20px;
   background:#00000010;
+}
+
+/* ---- Custom icon sprite sizing ---- */
+.btn-icon{
+  width:1rem;
+  height:1rem;
+  vertical-align:-0.15em;
+  stroke:currentColor;
+}
+.gear-btn .btn-icon{
+  width:1.1rem;
+  height:1.1rem;
+  vertical-align:middle;
+}
+.stamp-icon{
+  width:1.3rem;
+  height:1.3rem;
+  vertical-align:-0.3em;
+  margin-right:0.3rem;
+  stroke:currentColor;
+}
+.trick-icon{
+  width:1.1rem;
+  height:1.1rem;
+  vertical-align:-0.22em;
+  margin-right:0.4rem;
+  stroke:var(--ink);
+  flex-shrink:0;
 }
 
 .foot{

@@ -69,7 +69,7 @@ function punctuationExcess(text){
 
 function toTrick(taxonomyId){
   const t = findTaxonomy(taxonomyId);
-  return { name: t.name, explain: t.explain };
+  return { name: t.name, explain: t.explain, icon: t.icon };
 }
 
 function extractDomain(text){

@@ -144,7 +144,7 @@ async function runAnalysis(raw){
       let isRateLimit = false;
       if(/overloaded/i.test(msg)) isRateLimit = 'overload';
       else if(/Too many analyses|rate_limited/i.test(msg)) isRateLimit = true;
-      final = heuristicOnlyResult(heuristic, true, isRateLimit);
+      final = heuristicOnlyResult(heuristic, true, isRateLimit, msg);
     }
   }else{
     final = heuristicOnlyResult(heuristic, shouldEscalate && !hasAnyKey());
@@ -155,7 +155,7 @@ async function runAnalysis(raw){
   receiptWrap.classList.remove('hidden');
 }
 
-function heuristicOnlyResult(h, noKeyOrFailed, isRateLimit){
+function heuristicOnlyResult(h, noKeyOrFailed, isRateLimit, debugMsg){
   let verdict = 'clean';
   if(h.isOpinion) verdict = 'opinion';
   else if(h.score >= 60) verdict = 'bullshit';
@@ -168,6 +168,9 @@ function heuristicOnlyResult(h, noKeyOrFailed, isRateLimit){
     note = 'You\'ve hit the shared analysis limit for this hour — showing the structural read instead. Try again shortly, or add your own free Groq key in Settings.';
   }else if(noKeyOrFailed){
     note = 'Deeper analysis is temporarily unavailable — showing the structural read instead.';
+    if(debugMsg){
+      note += ' [DEBUG: ' + debugMsg + ']';
+    }
   }
 
   return {
@@ -314,28 +317,28 @@ shareReceiptBtn.addEventListener('click', async () => {
   const originalLabel = shareReceiptBtn.textContent;
   shareReceiptBtn.textContent = 'Preparing…';
 
-  // Build a detached, capture-safe copy of the receipt off-screen —
-  // same width as the live one so layout matches exactly, but using
-  // markup html2canvas can actually render correctly.
-  const captureNode = document.createElement('div');
-  captureNode.className = 'receipt';
-  captureNode.style.position = 'fixed';
-  captureNode.style.top = '0';
-  captureNode.style.left = '-9999px';
-  captureNode.style.width = receiptEl.getBoundingClientRect().width + 'px';
-  captureNode.innerHTML = buildCaptureHtml(lastResult);
-  document.body.appendChild(captureNode);
-
   try{
     // Custom font must be fully loaded before capture, or html2canvas
-    // silently falls back to a system font and the receipt looks plain.
+    // silently falls back to a system font.
     if(document.fonts && document.fonts.ready){
       await document.fonts.ready;
     }
 
-    const canvas = await html2canvas(captureNode, {
+    // Capture the real, visible receipt element (correct size/position,
+    // correct inherited styles) — but swap its content for the
+    // capture-safe markup (no <details>, no <use> icons) inside the
+    // clone only, via onclone. Manually detaching a fixed/off-screen
+    // copy caused a black-bar/mis-sized capture — cloning in place
+    // avoids that entirely.
+    const canvas = await html2canvas(receiptEl, {
       backgroundColor: '#EDE7D9',
-      scale: 2
+      scale: 2,
+      onclone: (clonedDoc) => {
+        const clonedReceipt = clonedDoc.getElementById('receipt');
+        if(clonedReceipt){
+          clonedReceipt.innerHTML = buildCaptureHtml(lastResult);
+        }
+      }
     });
 
     canvas.toBlob(async (blob) => {
@@ -360,13 +363,11 @@ shareReceiptBtn.addEventListener('click', async () => {
         URL.revokeObjectURL(url);
       }
 
-      captureNode.remove();
       shareReceiptBtn.disabled = false;
       shareReceiptBtn.textContent = originalLabel;
     }, 'image/png');
 
   }catch(err){
-    captureNode.remove();
     shareReceiptBtn.disabled = false;
     shareReceiptBtn.textContent = originalLabel;
     alert('Could not generate the receipt image — try again.');

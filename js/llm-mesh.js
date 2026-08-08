@@ -62,7 +62,10 @@ async function callSharedProxy(text){
     const body = await res.json().catch(() => ({}));
     throw new Error(body.note || 'rate_limited');
   }
-  if(!res.ok) throw new Error('proxy_failed_' + res.status);
+  if(!res.ok){
+    const body = await res.json().catch(() => ({}));
+    throw new Error(`HTTP ${res.status}: ${body.detail || body.error || 'unknown'}`);
+  }
   return res.json(); // already { verdict, score, note, tricks, source } shaped
 }
 

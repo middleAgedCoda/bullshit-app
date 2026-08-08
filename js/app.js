@@ -257,7 +257,7 @@ function buildCaptureHtml(r){
     <div class="receipt-row"><span class="k">BS Score</span><span class="v">${r.score}/100</span></div>
     ${r.domain ? `<div class="receipt-row"><span class="k">Source</span><span class="v">${escapeHtml(r.domain)}</span></div>` : ''}
     <hr class="receipt-divider">
-    <div class="verdict-stamp ${v.cls}">${stampIcon}${v.label}</div>
+    <div class="verdict-stamp ${v.cls}" style="opacity:1;animation:none;">${stampIcon}${v.label}</div>
     <p class="receipt-note">${escapeHtml(r.note)}</p>
     ${tricksHtml}
   `;

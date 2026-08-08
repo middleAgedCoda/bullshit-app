@@ -22,7 +22,7 @@
   align-items:center;
   justify-content:center;
   gap:1rem;
-  animation:splash-fade 1.6s ease forwards;
+  animation:splash-fade 2.8s ease forwards;
 }
 .splash-mark{
   font-family:var(--mono);
@@ -49,7 +49,7 @@
   to{ height:32px; }
 }
 @keyframes splash-fade{
-  0%, 70%{ opacity:1; pointer-events:auto; }
+  0%, 82%{ opacity:1; pointer-events:auto; }
   100%{ opacity:0; pointer-events:none; }
 }
 
@@ -402,6 +402,12 @@ textarea:focus{border-color:var(--amber);}
   cursor:pointer;
   font-weight:700;
   font-size:0.78rem;
+}
+.trick-item-title{
+  font-weight:700;
+  font-size:0.78rem;
+  display:flex;
+  align-items:center;
 }
 .trick-item p{
   margin:0.5rem 0 0;

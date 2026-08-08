@@ -409,6 +409,11 @@ textarea:focus{border-color:var(--amber);}
   display:flex;
   align-items:center;
 }
+.capture-bullet{
+  color:var(--stamp-red);
+  margin-right:0.4rem;
+  font-size:0.6rem;
+}
 .trick-item p{
   margin:0.5rem 0 0;
   font-size:0.76rem;

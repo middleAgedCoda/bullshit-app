@@ -1,5 +1,6 @@
 import { scoreContent } from './heuristics.js';
 import { analyzeWithMesh, analyzeImageWithMesh, saveKeys, hasAnyKey } from './llm-mesh.js';
+import { findTaxonomyByName } from './taxonomy.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -10,6 +11,7 @@ const intake = $('intake');
 const loading = $('loading');
 const receiptWrap = $('receiptWrap');
 const receiptEl = $('receipt');
+const shareReceiptBtn = $('shareReceiptBtn');
 
 const settingsToggle = $('settingsToggle');
 const settingsPanel = $('settingsPanel');
@@ -55,17 +57,46 @@ cameraInput.addEventListener('change', async (e) => {
   cameraInput.value = ''; // allow re-selecting the same file next time
 });
 
-function fileToDataUrl(file){
-  // Resize/compress first — raw phone camera photos are often 3-5MB+,
-  // which can exceed what the vision API accepts or time out on mobile
-  // upload. Cap at 1024px wide, JPEG quality 0.75.
+async function fileToDataUrl(file){
+  // Resize/compress before sending — raw phone camera photos are often
+  // 3-5MB+ (12MP+), and decoding that at full resolution just to shrink
+  // it is exactly what was causing "low memory" warnings on capture.
+  // createImageBitmap's resize options let the browser decode straight
+  // to target size, without ever fully allocating the original in memory.
+  const maxWidth = 1024;
+
+  if('createImageBitmap' in window){
+    try{
+      const probe = await createImageBitmap(file);
+      const scale = Math.min(1, maxWidth / probe.width);
+      const targetW = Math.round(probe.width * scale);
+      const targetH = Math.round(probe.height * scale);
+      probe.close();
+
+      const bitmap = await createImageBitmap(file, {
+        resizeWidth: targetW,
+        resizeHeight: targetH,
+        resizeQuality: 'medium'
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(bitmap, 0, 0);
+      bitmap.close();
+      return canvas.toDataURL('image/jpeg', 0.75);
+    }catch(e){
+      // fall through to the Image-based approach below
+    }
+  }
+
+  // Fallback for browsers without createImageBitmap resize support
   return new Promise((resolve, reject) => {
     const img = new Image();
     const reader = new FileReader();
     reader.onload = () => { img.src = reader.result; };
     reader.onerror = reject;
     img.onload = () => {
-      const maxWidth = 1024;
       const scale = Math.min(1, maxWidth / img.width);
       const canvas = document.createElement('canvas');
       canvas.width = img.width * scale;
@@ -150,32 +181,56 @@ function mergeResults(h, llm){
 }
 
 const VERDICT_LABELS = {
-  bullshit: { label: '🐂💩 BULLSHIT', cls: '' },
-  clean: { label: '✅ CLEAN', cls: 'ok' },
-  caution: { label: '⚠ PROCEED WITH CAUTION', cls: 'caution' },
-  opinion: { label: '🤷 OPINION', cls: 'opinion' }
+  bullshit: { label: 'BULLSHIT', icon: 'bs-icon-bullshit', cls: '' },
+  clean: { label: 'CLEAN', icon: 'bs-icon-clean', cls: 'ok' },
+  caution: { label: 'PROCEED WITH CAUTION', icon: 'bs-icon-caution', cls: 'caution' },
+  opinion: { label: 'OPINION', icon: 'bs-icon-opinion', cls: 'opinion' }
 };
+
+function generateBsId(r){
+  // Deterministic short hash of the result content + a coarse timestamp
+  // bucket, so re-running similar content produces a stable-ish ID
+  // without needing a backend. Not cryptographic — just a citable
+  // reference for this receipt.
+  let hash = 0;
+  const str = (r.note || '') + r.score + (r.verdict || '') + new Date().toISOString().slice(0, 10);
+  for(let i = 0; i < str.length; i++){
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  const positive = Math.abs(hash).toString().padStart(8, '0').slice(0, 8);
+  const year = new Date().getFullYear();
+  return `BS-${year}-${positive}`;
+}
 
 function renderReceipt(r){
   const v = VERDICT_LABELS[r.verdict] || VERDICT_LABELS.caution;
 
   const tricksHtml = (r.tricks && r.tricks.length)
     ? `<div class="tricks">
-        ${r.tricks.map(t => `
+        ${r.tricks.map(t => {
+          const taxEntry = findTaxonomyByName(t.name);
+          const iconId = t.icon || (taxEntry && taxEntry.icon);
+          const cleanName = t.name.replace(/^\S+\s/, ''); // strip leading emoji glyph, icon replaces it
+          const iconHtml = iconId
+            ? `<svg class="trick-icon" aria-hidden="true"><use href="#${iconId}"></use></svg>`
+            : '';
+          return `
           <details class="trick-item">
-            <summary>${escapeHtml(t.name)}</summary>
+            <summary>${iconHtml}<span>${escapeHtml(cleanName)}</span></summary>
             <p>${escapeHtml(t.explain)}</p>
           </details>
-        `).join('')}
+        `;
+        }).join('')}
        </div>`
     : '';
 
   receiptEl.innerHTML = `
     <div class="receipt-title">Bullshit™ Receipt</div>
+    <div class="receipt-id">${generateBsId(r)}</div>
     <div class="receipt-row"><span class="k">BS Score</span><span class="v">${r.score}/100</span></div>
     ${r.domain ? `<div class="receipt-row"><span class="k">Source</span><span class="v">${escapeHtml(r.domain)}</span></div>` : ''}
     <hr class="receipt-divider">
-    <div class="verdict-stamp ${v.cls}">${v.label}</div>
+    <div class="verdict-stamp ${v.cls}"><svg class="stamp-icon" aria-hidden="true"><use href="#${v.icon}"></use></svg>${v.label}</div>
     <p class="receipt-note">${escapeHtml(r.note)}</p>
     ${tricksHtml}
   `;
@@ -185,6 +240,68 @@ function escapeHtml(s){
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
+}
+
+// ---- Share receipt as an image ----
+shareReceiptBtn.addEventListener('click', async () => {
+  if(typeof html2canvas === 'undefined'){
+    alert('Sharing isn\'t available right now — try again in a moment.');
+    return;
+  }
+
+  shareReceiptBtn.disabled = true;
+  const originalLabel = shareReceiptBtn.textContent;
+  shareReceiptBtn.textContent = 'Preparing…';
+
+  try{
+    const canvas = await html2canvas(receiptEl, {
+      backgroundColor: '#EDE7D9',
+      scale: 2 // sharper image for sharing/screenshots
+    });
+
+    canvas.toBlob(async (blob) => {
+      const file = new File([blob], 'bullshit-receipt.png', { type: 'image/png' });
+
+      if(navigator.share && navigator.canShare && navigator.canShare({ files: [file] })){
+        try{
+          await navigator.share({
+            files: [file],
+            title: 'Bullshit™ Receipt',
+            text: 'Ran this through Bullshit™ — know what you\'re looking at.'
+          });
+        }catch(shareErr){
+          // user cancelled the share sheet — not an error, do nothing
+        }
+      }else{
+        // fallback: trigger a download so the user can share it manually
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'bullshit-receipt.png';
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+
+      shareReceiptBtn.disabled = false;
+      shareReceiptBtn.textContent = originalLabel;
+    }, 'image/png');
+
+  }catch(err){
+    shareReceiptBtn.disabled = false;
+    shareReceiptBtn.textContent = originalLabel;
+    alert('Could not generate the receipt image — try again.');
+  }
+});
+
+// ---- Splash screen ----
+const splash = document.getElementById('splash');
+if(splash){
+  const isShareIntent = new URLSearchParams(window.location.search).get('auto') === '1';
+  if(isShareIntent){
+    splash.remove();
+  }else{
+    setTimeout(() => splash.remove(), 1700);
+  }
 }
 
 // ---- Handle incoming share-target payload ----

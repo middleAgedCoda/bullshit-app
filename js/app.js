@@ -1,6 +1,7 @@
 import { scoreContent } from './heuristics.js';
 import { analyzeWithMesh, analyzeImageWithMesh, saveKeys, hasAnyKey } from './llm-mesh.js';
 import { findTaxonomyByName } from './taxonomy.js';
+import { addReceipt, getHistory, deleteReceipt, clearAllHistory } from './history.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -19,27 +20,90 @@ const settingsScrim = $('settingsScrim');
 const saveKeysBtn = $('saveKeysBtn');
 const groqKeyInput = $('groqKey');
 const orKeyInput = $('orKey');
+const historyToggle = $('historyToggle');
+const historyPanel = $('historyPanel');
+const historyList = $('historyList');
+const clearHistoryBtn = $('clearHistoryBtn');
 
-// ---- Settings (overlay dropdown with dim scrim) ----
-function openSettings(){
-  settingsPanel.classList.add('open');
-  settingsScrim.classList.remove('hidden');
-}
-function closeSettings(){
+// ---- Overlay panels (settings + history) — shared scrim, mutually exclusive ----
+function closeAllPanels(){
   settingsPanel.classList.remove('open');
+  historyPanel.classList.remove('open');
   settingsScrim.classList.add('hidden');
 }
+function openPanel(panel){
+  closeAllPanels();
+  panel.classList.add('open');
+  settingsScrim.classList.remove('hidden');
+}
 settingsToggle.addEventListener('click', () => {
-  settingsToggle.classList.remove('spin'); // restart animation even on rapid re-taps
-  void settingsToggle.offsetWidth; // force reflow so the class removal registers
+  settingsToggle.classList.remove('spin');
+  void settingsToggle.offsetWidth;
   settingsToggle.classList.add('spin');
-  if(settingsPanel.classList.contains('open')) closeSettings();
-  else openSettings();
+  if(settingsPanel.classList.contains('open')) closeAllPanels();
+  else openPanel(settingsPanel);
 });
-settingsScrim.addEventListener('click', closeSettings);
+historyToggle.addEventListener('click', () => {
+  if(historyPanel.classList.contains('open')){
+    closeAllPanels();
+  }else{
+    openPanel(historyPanel);
+    renderHistoryList();
+  }
+});
+settingsScrim.addEventListener('click', closeAllPanels);
 saveKeysBtn.addEventListener('click', () => {
   saveKeys({ groq: groqKeyInput.value.trim(), openrouter: orKeyInput.value.trim() });
-  closeSettings();
+  closeAllPanels();
+});
+
+// ---- History list rendering ----
+async function renderHistoryList(){
+  const items = await getHistory();
+  if(!items.length){
+    historyList.innerHTML = '<p class="history-empty">No receipts yet — analyses you run will show up here.</p>';
+    return;
+  }
+  historyList.innerHTML = items.map(item => {
+    const preview = (item.preview || '').slice(0, 60);
+    const ellipsis = (item.preview || '').length > 60 ? '…' : '';
+    return `
+      <div class="history-item" data-id="${item.id}">
+        <div class="history-item-main">
+          <span class="history-score">${item.score}/100</span>
+          <span class="history-preview">${escapeHtml(preview)}${ellipsis}</span>
+        </div>
+        <button class="history-delete" data-id="${item.id}" aria-label="Delete this entry">✕</button>
+      </div>`;
+  }).join('');
+}
+
+historyList.addEventListener('click', async (e) => {
+  const delBtn = e.target.closest('.history-delete');
+  if(delBtn){
+    e.stopPropagation();
+    await deleteReceipt(delBtn.dataset.id);
+    renderHistoryList();
+    return;
+  }
+  const row = e.target.closest('.history-item');
+  if(row){
+    const items = await getHistory();
+    const found = items.find(i => i.id === row.dataset.id);
+    if(found){
+      closeAllPanels();
+      intake.classList.add('hidden');
+      renderReceipt(found);
+      receiptWrap.classList.remove('hidden');
+    }
+  }
+});
+
+clearHistoryBtn.addEventListener('click', async () => {
+  if(confirm('Clear all saved history? This can\'t be undone.')){
+    await clearAllHistory();
+    renderHistoryList();
+  }
 });
 
 // ---- Camera capture & file upload (screenshots, saved images) ----
@@ -60,6 +124,7 @@ async function handleImageFile(file){
     loading.classList.add('hidden');
     renderReceipt(result);
     receiptWrap.classList.remove('hidden');
+    persistReceipt(result, '📷 Image analysis');
   }catch(err){
     loading.classList.add('hidden');
     renderReceipt({
@@ -179,6 +244,7 @@ async function runAnalysis(raw){
   loading.classList.add('hidden');
   renderReceipt(final);
   receiptWrap.classList.remove('hidden');
+  persistReceipt(final, text);
 }
 
 function heuristicOnlyResult(h, noKeyOrFailed, isRateLimit, debugMsg){
@@ -223,6 +289,29 @@ const VERDICT_LABELS = {
   caution: { label: 'PROCEED WITH CAUTION', icon: 'bs-icon-caution', cls: 'caution' },
   opinion: { label: 'OPINION', icon: 'bs-icon-opinion', cls: 'opinion' }
 };
+
+async function persistReceipt(r, preview){
+  // Save every real analysis to local history — this is the foundation
+  // described in HANDOFF.md §11, works fully offline, never blocks the
+  // UI if it fails (private browsing, storage quota, etc).
+  const id = r.id || generateBsId(r);
+  r.id = id;
+  try{
+    await addReceipt({
+      id,
+      timestamp: Date.now(),
+      preview: (preview || '').slice(0, 140),
+      score: r.score,
+      verdict: r.verdict,
+      note: r.note,
+      tricks: r.tricks || [],
+      domain: r.domain || null,
+      source: r.source
+    });
+  }catch(e){
+    // non-fatal — history is a bonus, not a requirement
+  }
+}
 
 function generateBsId(r){
   // Deterministic short hash of the result content + a coarse timestamp
@@ -274,7 +363,7 @@ function buildCaptureHtml(r){
 
   return `
     <div class="receipt-title">Bullshit™ Receipt</div>
-    <div class="receipt-id">${generateBsId(r)}</div>
+    <div class="receipt-id">${(r.id || generateBsId(r))}</div>
     <div class="receipt-row"><span class="k">BS Score</span><span class="v">${r.score}/100</span></div>
     ${r.domain ? `<div class="receipt-row"><span class="k">Source</span><span class="v">${escapeHtml(r.domain)}</span></div>` : ''}
     <hr class="receipt-divider">
@@ -311,7 +400,7 @@ function renderReceipt(r){
 
   receiptEl.innerHTML = `
     <div class="receipt-title">Bullshit™ Receipt</div>
-    <div class="receipt-id">${generateBsId(r)}</div>
+    <div class="receipt-id">${(r.id || generateBsId(r))}</div>
     <div class="receipt-row"><span class="k">BS Score</span><span class="v">${r.score}/100</span></div>
     ${r.domain ? `<div class="receipt-row"><span class="k">Source</span><span class="v">${escapeHtml(r.domain)}</span></div>` : ''}
     <hr class="receipt-divider">

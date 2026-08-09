@@ -129,6 +129,11 @@
         <path d="M8 9.5h8"/>
         <path d="M8 12h5"/>
       </symbol>
+      <symbol id="bs-icon-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 10a8 8 0 1 1 2.3 5.6"/>
+        <path d="M3 15v-4h4"/>
+        <path d="M12 8v5l3.5 2"/>
+      </symbol>
       <symbol id="bs-icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
         <rect x="3.5" y="4.5" width="17" height="15" rx="2"/>
         <circle cx="9" cy="10" r="1.6"/>
@@ -169,9 +174,21 @@
         <span class="wordmark">Bullshit<sup>™</sup></span>
         <span class="tagline">know what you're looking at</span>
       </div>
-      <button id="settingsToggle" class="gear-btn" aria-label="Settings"><svg class="btn-icon" aria-hidden="true"><use href="#bs-icon-settings"></use></svg></button>
+      <div class="topbar-actions">
+        <button id="historyToggle" class="gear-btn" aria-label="History"><svg class="btn-icon" aria-hidden="true"><use href="#bs-icon-history"></use></svg></button>
+        <button id="settingsToggle" class="gear-btn" aria-label="Settings"><svg class="btn-icon" aria-hidden="true"><use href="#bs-icon-settings"></use></svg></button>
+      </div>
     </div>
   </header>
+
+  <div class="settings-panel" id="historyPanel">
+    <div class="history-header">
+      <p class="settings-label" style="margin:0;">Your history</p>
+      <button id="clearHistoryBtn" class="history-clear-btn">Clear all</button>
+    </div>
+    <p class="settings-hint">Saved on this device only — nothing is sent anywhere. This is the foundation for account sync, whenever that ships.</p>
+    <div id="historyList" class="history-list"></div>
+  </div>
 
   <div class="settings-panel" id="settingsPanel">
     <p class="settings-hint">Deeper analysis works out of the box for everyone — no key needed. If you hit the shared rate limit, add your own free Groq key below to keep going.</p>

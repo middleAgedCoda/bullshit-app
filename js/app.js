@@ -168,9 +168,6 @@ function heuristicOnlyResult(h, noKeyOrFailed, isRateLimit, debugMsg){
     note = 'You\'ve hit the shared analysis limit for this hour — showing the structural read instead. Try again shortly, or add your own free Groq key in Settings.';
   }else if(noKeyOrFailed){
     note = 'Deeper analysis is temporarily unavailable — showing the structural read instead.';
-    if(debugMsg){
-      note += ' [DEBUG: ' + debugMsg + ']';
-    }
   }
 
   return {
@@ -363,7 +360,7 @@ shareReceiptBtn.addEventListener('click', async () => {
 
       shareReceiptBtn.disabled = false;
       shareReceiptBtn.textContent = originalLabel;
-    }, 'image/png'); 
+    }, 'image/png');
 
   }catch(err){
     shareReceiptBtn.disabled = false;

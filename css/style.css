@@ -143,8 +143,16 @@ body{
   transition:transform 0.15s ease, border-color 0.15s ease;
 }
 .gear-btn:active{
-  transform:scale(0.92) rotate(8deg);
+  transform:scale(0.92);
   border-color:var(--amber);
+}
+.gear-btn.spin{
+  animation:gear-spin-tap 0.5s ease;
+}
+@keyframes gear-spin-tap{
+  0%{ transform:rotate(0deg) scale(1); }
+  55%{ transform:rotate(110deg) scale(1.18); border-color:var(--amber); }
+  100%{ transform:rotate(0deg) scale(1); }
 }
 
 /* ---- Settings: overlay dropdown with dim scrim + glass panel ---- */
@@ -588,24 +596,51 @@ textarea:focus{border-color:var(--amber);}
   font-size:0.7rem;
 }
 .kuro-badge{
+  position:relative;
+  overflow:hidden;
   display:inline-flex;
   align-items:center;
   gap:0.5rem;
-  padding:0.5rem 1rem;
-  border:1px solid var(--border-subtle);
+  padding:0.5rem 1.1rem;
+  border:1px solid rgba(255,255,255,0.14);
+  border-top-color:rgba(255,255,255,0.28);
   border-radius:20px;
+  background:linear-gradient(135deg, rgba(199,145,67,0.1), rgba(139,58,58,0.06));
+  backdrop-filter:blur(8px) saturate(160%);
+  -webkit-backdrop-filter:blur(8px) saturate(160%);
+  box-shadow:0 4px 18px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
   color:var(--paper-dim);
   font-family:var(--mono);
   font-size:0.7rem;
   letter-spacing:0.03em;
   text-decoration:none;
-  opacity:0.8;
   transition:opacity 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+.kuro-badge::before{
+  content:'';
+  position:absolute;
+  top:0;
+  left:0;
+  width:45%;
+  height:100%;
+  background:linear-gradient(115deg, transparent, rgba(255,255,255,0.22), transparent);
+  transform:translateX(-220%);
+  animation:kuro-shine 5s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes kuro-shine{
+  0%{ transform:translateX(-220%); }
+  35%{ transform:translateX(320%); }
+  100%{ transform:translateX(320%); }
 }
 .kuro-badge:active{
   opacity:1;
   border-color:var(--amber);
   transform:scale(0.96);
+}
+.kuro-label{
+  position:relative;
+  z-index:1;
 }
 .kuro-mark{
   display:inline-flex;
@@ -618,4 +653,6 @@ textarea:focus{border-color:var(--amber);}
   color:var(--charcoal);
   font-weight:700;
   font-size:0.7rem;
+  position:relative;
+  z-index:1;
 }

@@ -26,10 +26,11 @@ saveKeysBtn.addEventListener('click', () => {
   settingsPanel.classList.add('hidden');
 });
 
-// ---- Camera capture ----
+// ---- Camera capture & file upload (screenshots, saved images) ----
 const cameraInput = $('cameraInput');
-cameraInput.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
+const fileUploadInput = $('fileUploadInput');
+
+async function handleImageFile(file){
   if(!file) return;
 
   const dataUrl = await fileToDataUrl(file);
@@ -54,7 +55,16 @@ cameraInput.addEventListener('change', async (e) => {
     });
     receiptWrap.classList.remove('hidden');
   }
+}
+
+cameraInput.addEventListener('change', async (e) => {
+  await handleImageFile(e.target.files[0]);
   cameraInput.value = ''; // allow re-selecting the same file next time
+});
+
+fileUploadInput.addEventListener('change', async (e) => {
+  await handleImageFile(e.target.files[0]);
+  fileUploadInput.value = '';
 });
 
 async function fileToDataUrl(file){

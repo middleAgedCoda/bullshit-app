@@ -15,15 +15,28 @@ const shareReceiptBtn = $('shareReceiptBtn');
 
 const settingsToggle = $('settingsToggle');
 const settingsPanel = $('settingsPanel');
+const settingsScrim = $('settingsScrim');
 const saveKeysBtn = $('saveKeysBtn');
 const groqKeyInput = $('groqKey');
 const orKeyInput = $('orKey');
 
-// ---- Settings ----
-settingsToggle.addEventListener('click', () => settingsPanel.classList.toggle('hidden'));
+// ---- Settings (overlay dropdown with dim scrim) ----
+function openSettings(){
+  settingsPanel.classList.add('open');
+  settingsScrim.classList.remove('hidden');
+}
+function closeSettings(){
+  settingsPanel.classList.remove('open');
+  settingsScrim.classList.add('hidden');
+}
+settingsToggle.addEventListener('click', () => {
+  if(settingsPanel.classList.contains('open')) closeSettings();
+  else openSettings();
+});
+settingsScrim.addEventListener('click', closeSettings);
 saveKeysBtn.addEventListener('click', () => {
   saveKeys({ groq: groqKeyInput.value.trim(), openrouter: orKeyInput.value.trim() });
-  settingsPanel.classList.add('hidden');
+  closeSettings();
 });
 
 // ---- Camera capture & file upload (screenshots, saved images) ----

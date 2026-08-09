@@ -153,6 +153,28 @@ body{
   margin-top:0.9rem;
   width:100%;
 }
+.settings-divider{
+  border-top:1px solid #33332c;
+  margin:1.1rem 0 0.9rem;
+}
+.settings-about{
+  font-size:0.72rem;
+  color:var(--paper-dim);
+  opacity:0.75;
+  line-height:1.5;
+  margin:0.3rem 0 0.7rem;
+}
+.settings-version{
+  font-family:var(--mono);
+  font-size:0.68rem;
+  color:var(--paper-dim);
+  opacity:0.5;
+  margin:0;
+}
+.settings-version a{
+  color:var(--amber);
+  opacity:1;
+}
 
 .tagline{
   font-family:var(--mono);
@@ -459,8 +481,38 @@ textarea:focus{border-color:var(--amber);}
 
 .foot{
   text-align:center;
-  padding:1.2rem;
+  padding:1.6rem 1.2rem 2rem;
   font-size:0.7rem;
-  opacity:0.4;
+  opacity:1;
 }
-.foot a{color:var(--paper-dim);}
+.kuro-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:0.5rem;
+  padding:0.5rem 1rem;
+  border:1px solid #33332c;
+  border-radius:20px;
+  color:var(--paper-dim);
+  font-family:var(--mono);
+  font-size:0.7rem;
+  letter-spacing:0.03em;
+  text-decoration:none;
+  opacity:0.75;
+  transition:opacity 0.15s ease, border-color 0.15s ease;
+}
+.kuro-badge:active{
+  opacity:1;
+  border-color:var(--amber);
+}
+.kuro-mark{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:1.3rem;
+  height:1.3rem;
+  border-radius:50%;
+  background:var(--amber);
+  color:var(--charcoal);
+  font-weight:700;
+  font-size:0.7rem;
+}

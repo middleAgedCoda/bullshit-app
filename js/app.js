@@ -30,6 +30,9 @@ function closeSettings(){
   settingsScrim.classList.add('hidden');
 }
 settingsToggle.addEventListener('click', () => {
+  settingsToggle.classList.remove('spin'); // restart animation even on rapid re-taps
+  void settingsToggle.offsetWidth; // force reflow so the class removal registers
+  settingsToggle.classList.add('spin');
   if(settingsPanel.classList.contains('open')) closeSettings();
   else openSettings();
 });

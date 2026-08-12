@@ -202,7 +202,42 @@
 
     <p class="settings-label">About</p>
     <p class="settings-about">Bullshit™ doesn't decide what's true — it decides what you're looking at. It classifies tactics (clickbait, emotional manipulation, missing evidence) rather than ruling on facts.</p>
-    <p class="settings-version">Bullshit™ v1.0</p>
+
+    <a class="btn-secondary settings-link-btn" href="mailto:kurodigitalarchitects@gmail.com?subject=Bullshit%E2%84%A2%20Feedback&body=Found%20a%20bug%20or%20have%20a%20suggestion%3F%20Tell%20us%20here%20%E2%80%94%20and%20if%20it%27s%20a%20bug%2C%20a%20screenshot%20helps%20a%20lot.">📩 Send feedback</a>
+    <button id="privacyLinkBtn" class="btn-secondary settings-link-btn">🔒 Privacy &amp; Data</button>
+
+    <p class="settings-version" style="margin-top:0.9rem;">Bullshit™ v1.0</p>
+  </div>
+
+  <div class="settings-panel" id="privacyPanel">
+    <p class="settings-label" style="margin-top:0;">Privacy &amp; Data</p>
+    <p class="settings-hint">The short version: nothing is sold, there's no ad tracking, no account is required, and your history never leaves your device. Here's the full breakdown.</p>
+
+    <details class="privacy-section">
+      <summary>What gets sent off your device, and to whom</summary>
+      <p>When you analyze text, a photo, or a screenshot, that content is sent to our Cloudflare Worker, which forwards it to Groq (a third-party AI inference provider) to generate the analysis. If you've added your own Groq or OpenRouter key in Settings, your content goes directly from your browser to that provider instead of through our Worker.</p>
+      <p>We do not control Groq's or OpenRouter's own data retention — see their policies if you want specifics on how long they hold request data. Nothing here is unique to Bullshit; any app using a hosted AI model works this way.</p>
+    </details>
+
+    <details class="privacy-section">
+      <summary>What we don't collect</summary>
+      <p>No accounts, no names, no emails (unless you email us directly for feedback), no ad trackers, no analytics pixels, no cookies, no selling or sharing of data with advertisers. There is currently no backend database storing your analyses at all — see the next section.</p>
+    </details>
+
+    <details class="privacy-section">
+      <summary>Your history</summary>
+      <p>Every receipt is saved locally on your device only, using your browser's built-in storage (IndexedDB) — never uploaded anywhere. Clear it anytime from the History panel. Uninstalling the app or clearing site data also erases it permanently.</p>
+    </details>
+
+    <details class="privacy-section">
+      <summary>IP address & rate limiting</summary>
+      <p>To stop the shared free analysis from being abused, our server briefly checks how many requests your IP address has made in the last hour. This is stored for a maximum of one hour and then automatically deleted — it's not logged permanently or tied to anything else about you.</p>
+    </details>
+
+    <details class="privacy-section">
+      <summary>Who we are / contact</summary>
+      <p>Bullshit™ is built by Kuro Digital. Questions, concerns, or data deletion requests: <a href="mailto:kurodigitalarchitects@gmail.com">kurodigitalarchitects@gmail.com</a>.</p>
+    </details>
   </div>
 
   <main class="stage">

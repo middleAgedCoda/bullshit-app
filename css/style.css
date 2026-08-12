@@ -391,6 +391,48 @@ textarea{
 }
 textarea:focus{border-color:var(--amber);}
 
+.textarea-wrap{
+  position:relative;
+}
+.link-info-btn{
+  position:absolute;
+  top:0.6rem;
+  right:0.6rem;
+  width:1.6rem;
+  height:1.6rem;
+  border-radius:50%;
+  border:1px solid var(--border-subtle);
+  background:rgba(16,21,26,0.7);
+  font-size:0.85rem;
+  line-height:1;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+}
+.link-info-btn:active{
+  border-color:var(--amber);
+  transform:scale(0.9);
+}
+.link-info-tooltip{
+  position:absolute;
+  top:2.5rem;
+  right:0.6rem;
+  width:min(78vw, 18rem);
+  background:rgba(27,35,43,0.95);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  border:1px solid var(--border-subtle);
+  border-radius:8px;
+  padding:0.8rem;
+  font-size:0.72rem;
+  line-height:1.5;
+  color:var(--paper-dim);
+  box-shadow:0 12px 30px rgba(0,0,0,0.4);
+  z-index:20;
+}
+
 /* ---- Buttons: premium tactile touch — light sweep + press depth ---- */
 .btn-primary, .btn-secondary, .btn-camera{
   position:relative;

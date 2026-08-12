@@ -244,7 +244,13 @@
 
     <section class="intake" id="intake">
       <label for="inputField" class="intake-label">Paste a headline, claim, or link</label>
-      <textarea id="inputField" placeholder="e.g. &quot;Scientists HATE this one weird trick doctors don't want you to know&quot;" rows="4"></textarea>
+      <div class="textarea-wrap">
+        <textarea id="inputField" placeholder="e.g. &quot;Scientists HATE this one weird trick doctors don't want you to know&quot;" rows="4"></textarea>
+        <button type="button" id="linkInfoBtn" class="link-info-btn" aria-label="About link support">ℹ️</button>
+        <div id="linkInfoTooltip" class="link-info-tooltip hidden">
+          Regular article/news links work — we fetch and read the page. Facebook, Instagram, TikTok, and X links won't work (they block automated access) — screenshot those instead and use the camera or upload button below.
+        </div>
+      </div>
       <button id="analyzeBtn" class="btn-primary">Run it through Bullshit</button>
       <label class="btn-camera btn-camera-live" for="cameraInput"><svg class="btn-icon" aria-hidden="true"><use href="#bs-icon-camera"></use></svg> Point camera at it instead</label>
       <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">

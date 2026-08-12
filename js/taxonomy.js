@@ -21,7 +21,7 @@ export const TAXONOMY = [
   { id: 'missing_context', name: '🧩 Missing Context', icon: 'bs-icon-context',
     explain: 'The core fact may be accurate, but leaves out context that would change how it reads.' },
   { id: 'ai_slop', name: '🤖 AI Slop', icon: 'bs-icon-aislop',
-    explain: 'Bears the hallmarks of low-effort AI-generated filler produced to fill space, not to inform.' },
+    explain: 'Bears the hallmarks of low-effort AI-generated content — text produced to fill space rather than inform, or an image/photo that shows signs of being AI-generated or synthetic.' },
   { id: 'science_ish', name: '🧪 Science-ish', icon: 'bs-icon-science',
     explain: 'Uses scientific-sounding language without real evidence, citations, or methodology behind it.' },
   { id: 'crypto_energy', name: '💸 Crypto Energy', icon: 'bs-icon-crypto',

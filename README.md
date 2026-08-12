@@ -2,7 +2,9 @@
 
 This holds your Groq key server-side so real users get analysis with zero setup — nobody needs their own API key. Deployed entirely from Cloudflare's mobile dashboard, no git repo or CLI required.
 
-> **Note:** an earlier version of this doc described deploying to Render. That path was abandoned — Render's free web-service tier turned out to require a paid plan on this account, and even where available, Render's free tier sleeps after ~15 min of inactivity with a 30-50s cold-start on the next request. Cloudflare Workers has no cold start and a genuinely free tier (100k requests/day, no card required), so the proxy lives there instead. The `bullshit-proxy` GitHub repo (if you still have it) contains only the old Render-targeted `server.js`/`package.json` — that's dead code, safe to ignore or delete. `worker.js` is the live code, currently version-controlled only informally (pasted directly into Cloudflare's editor).
+> **Note:** an earlier version of this doc described deploying to Render. That path was abandoned — Render's free web-service tier turned out to require a paid plan on this account, and even where available, Render's free tier sleeps after ~15 min of inactivity with a 30-50s cold-start on the next request. Cloudflare Workers has no cold start and a genuinely free tier (100k requests/day, no card required), so the proxy lives there instead.
+>
+> **Deployment has also since moved from manual paste-into-editor to Git-based auto-deploy** (see "Auto-deploy from GitHub" below) — this is now the recommended path, since it eliminates the "did the deploy actually take?" failures that came up repeatedly during manual deploys. The steps below describe the very first one-time Worker creation; after that, routine changes go through GitHub instead.
 
 ## Deploy steps
 
@@ -26,11 +28,35 @@ The code checks for a `RATE_LIMIT_KV` binding and silently skips limiting if it'
 2. On the Worker → **Settings → Bindings → Add binding → KV Namespace**.
 3. Variable name must be exactly `RATE_LIMIT_KV`, bound to that namespace.
 
-Current limit: 60 analyses per IP per hour, shared across everyone hitting this Worker (raised from an initial 20, which was too tight even for solo testing). This also protects against Groq's own quota being drained by one abusive visitor.
+Current limit: **200 analyses per IP per hour** (raised for public beta from 20→60→200 during testing/soft-launch phases). Important nuance: this is *per IP address*, not a single shared pool — but on many African mobile networks, carrier-grade NAT means genuinely different users can share the same public IP, so "per IP" can still mean "per group of strangers on the same carrier." That's part of why this is set generously rather than tightly. Also protects against Groq's own quota being drained by one abusive visitor.
+
+## Auto-deploy from GitHub (replaces manual paste-and-deploy)
+
+Cloudflare's own Git integration ("Workers Builds") connects this Worker directly to a GitHub repo — every push to `main` auto-builds and deploys, no more pasting code into the dashboard editor. This is what eliminates the "did it actually deploy?" guessing game.
+
+**One-time setup:**
+1. Create a GitHub repo (or reuse this one, `bullshit-proxy`) containing `worker.js` and `wrangler.jsonc`.
+2. In Cloudflare dashboard → your Worker → **Settings → Builds → Connect**.
+3. Authorize GitHub, select this repo, production branch = `main`.
+4. Push a commit — Cloudflare auto-builds and deploys within seconds, and shows a check mark/status directly on the GitHub commit.
+
+**From then on:** edit `worker.js` on GitHub the normal way (tap file → pencil → edit → commit) — no more visiting Cloudflare's editor at all for routine changes. Every commit is now a permanent, inspectable version, and every deploy is guaranteed to match what's actually in the file, since a machine does it instead of a manual copy-paste.
+
+## Real-time error alerts
+
+Every `catch` block in `worker.js` now calls `notifyError()`, which pushes a phone notification via [ntfy.sh](https://ntfy.sh) — free, no signup, no API key — whenever something genuinely breaks (not routine rate limits, those are excluded on purpose).
+
+**Setup (2 minutes):**
+1. Install the **ntfy** app (Android/iOS, free) from your app store.
+2. In the app, subscribe to a topic name of your choosing — treat it like a password, e.g. `bullshit-alerts-x7k2m` (anyone who knows the exact topic name can see your alerts, so don't use something guessable).
+3. On the Worker → **Settings → Variables and Secrets** → add `NTFY_TOPIC` = that same topic name (plain text is fine, it's not truly sensitive, but Secret works too).
+4. Deploy. From now on, any real server-side failure pushes straight to your phone within seconds — this replaces "notice a broken receipt, screenshot it, describe it" with an immediate, specific alert.
+
+If `NTFY_TOPIC` isn't set, alerting is simply skipped — never blocks or slows down the actual response to a user.
 
 ## Two kinds of "rate limited" — don't confuse them
 
-The Worker distinguishes between hitting *our own* 60/hour KV limit and hitting *Groq's own* per-key rate limit (a separate thing, on Groq's side, that can happen well before our limit if there's a burst of traffic). Both return an HTTP 429, but with different message text, so the client can show the right advice ("wait an hour" vs. "try again in a few seconds"). If you ever see requests failing in a way that looks like rate limiting but isn't matching either message, check the Worker's **Metrics** tab — specifically the subrequest panel for `api.groq.com` — to see the actual pass/fail split against Groq directly.
+The Worker distinguishes between hitting *our own* 200/hour per-IP KV limit and hitting *Groq's own* per-key rate limit (a separate thing, on Groq's side, that can happen well before our limit if there's a burst of traffic). Both return an HTTP 429, but with different message text, so the client can show the right advice ("wait an hour" vs. "try again in a few seconds"). If you ever see requests failing in a way that looks like rate limiting but isn't matching either message, check the Worker's **Metrics** tab — specifically the subrequest panel for `api.groq.com` — to see the actual pass/fail split against Groq directly.
 
 ## Endpoints
 

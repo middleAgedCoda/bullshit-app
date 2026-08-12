@@ -110,6 +110,19 @@ clearHistoryBtn.addEventListener('click', async () => {
   }
 });
 
+// ---- Link support info tooltip ----
+const linkInfoBtn = $('linkInfoBtn');
+const linkInfoTooltip = $('linkInfoTooltip');
+linkInfoBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  linkInfoTooltip.classList.toggle('hidden');
+});
+document.addEventListener('click', (e) => {
+  if(!linkInfoTooltip.classList.contains('hidden') && !linkInfoTooltip.contains(e.target) && e.target !== linkInfoBtn){
+    linkInfoTooltip.classList.add('hidden');
+  }
+});
+
 // ---- Camera capture & file upload (screenshots, saved images) ----
 const cameraInput = $('cameraInput');
 const fileUploadInput = $('fileUploadInput');

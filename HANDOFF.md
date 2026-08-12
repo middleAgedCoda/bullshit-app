@@ -1,6 +1,6 @@
 # Bullshit™ — Project Handoff
 
-**Status as of this doc:** stable, working PWA. Live, installable, share-target working on Android, camera analysis working, shareable receipt images working, shared analysis working for anonymous users with no key required. All major bugs from the initial build-out are resolved (see §6). Built under the Kuro Digital model.
+**Status as of this doc:** stable, working PWA, ready for a small private beta (Phase 0 — see §18). Live, installable, share-target working on Android, camera analysis working, shareable receipt images working, shared analysis working for anonymous users with no key required, local history working, feedback and privacy channels in place. All major bugs from the initial build-out are resolved (see §6). Built under the Kuro Digital model.
 
 **Live app:** https://middleagedcoda.github.io/bullshit-app/
 **Shared analysis backend:** Cloudflare Worker at `https://polished-fire-59b0.brentonchimzy2802.workers.dev`
@@ -94,6 +94,7 @@ js/app.js             — orchestration: UI wiring, escalation logic, receipt re
 js/heuristics.js      — deterministic scoring engine
 js/llm-mesh.js        — calls the shared Worker, falls back to user's own keys
 js/taxonomy.js         — the 14-tactic closed list (client copy) incl. icon id mapping
+js/history.js         — IndexedDB wrapper for local receipt history
 HANDOFF.md             — this file
 ```
 
@@ -102,7 +103,7 @@ HANDOFF.md             — this file
 /analyze        POST { text }  → { verdict, score, note, tricks, source }
 /analyze-image  POST { image: dataURL }  → same shape, via vision model
 ```
-Env vars/secrets on the Worker: `GROQ_API_KEY` (encrypted secret). Optional binding: `RATE_LIMIT_KV` (Workers KV namespace) — this **is** bound and confirmed working. Current limit: 60 requests/IP/hour (raised from an initial 20, which was too tight even for solo testing).
+Env vars/secrets on the Worker: `GROQ_API_KEY` (encrypted secret). Optional binding: `RATE_LIMIT_KV` (Workers KV namespace) — this **is** bound and confirmed working. Current limit: 200 requests/IP/hour (raised 20→60→200 across testing and pre-beta hardening; see §17 for why 200 specifically).
 
 ---
 
@@ -127,7 +128,8 @@ Env vars/secrets on the Worker: `GROQ_API_KEY` (encrypted secret). Optional bind
 - **iOS share-target support is untested and likely doesn't work** — Apple's PWA share_target support is historically limited/absent. Android-only for now.
 - **Two copies of the taxonomy** (`js/taxonomy.js` and inline in `worker.js`) must be manually kept in sync if it's ever edited. `js/taxonomy.js` additionally carries the `icon` id mapping the backend copy doesn't need.
 - **No persistence layer.** Every analysis is stateless — nothing is logged or stored anywhere. This is fine for the current state but blocks the "dataset companies could pay to access" ambition (§8) until deliberately built.
-- **Orphaned `bullshit-proxy` GitHub repo** contains the original Render-targeted `server.js`/`package.json` — dead code, not in use, safe to delete or ignore. The live backend is the Cloudflare Worker; its source (`worker.js`) is not currently version-controlled anywhere, just pasted directly into Cloudflare's editor. Still a good idea to eventually put it in a repo for history, even though Cloudflare doesn't require it to deploy.
+- **Orphaned `bullshit-proxy` GitHub repo** contains the original Render-targeted `server.js`/`package.json` (dead code) alongside the real `worker.js` and `wrangler.jsonc`. **Git-based auto-deploy (Cloudflare's "Workers Builds") is NOT yet working** — attempted from a mobile browser, but the GitHub↔Cloudflare OAuth handoff kept looping back to the install screen instead of completing the connection. Parked for now; the plan is to retry from an actual desktop browser, where this kind of OAuth redirect is generally far more reliable. **Until that's connected, deploys are still manual paste-into-Cloudflare's-editor** — see §6 for why that's error-prone, and always verify a deploy actually landed via the `WORKER_VERSION` canary (§17) rather than trusting the editor's UI.
+- **Real-time error alerting is code-complete but not yet activated.** `notifyError()` in `worker.js` pushes to ntfy.sh on genuine failures (excludes routine rate-limit responses), but this only does anything once an `NTFY_TOPIC` env var is set and the ntfy app is installed/subscribed on a phone. As of this doc, that setup step hasn't been done yet — full instructions are in `bullshit-proxy/README.md`.
 
 ---
 
@@ -136,7 +138,7 @@ Env vars/secrets on the Worker: `GROQ_API_KEY` (encrypted secret). Optional bind
 - **Backend/dataset layer** — needed if the long-term plan is a "Bullshit Taxonomy" dataset product companies pay to access. This requires an actual database (Supabase free tier is a reasonable next step, pairs naturally with Cloudflare) and a decision about what's logged, anonymization, and consent/privacy posture before any company-facing product is built on top of it.
 - **Personality/flavor verdicts** (🤡 Professional Yapper, etc.) — cosmetic layer on top of the existing taxonomy, low effort whenever wanted.
 - **"Estimated read/share ratio" style stats** — flagged as risky: unless backed by real telemetry, this is the LLM inventing statistics, which is exactly the kind of thing Bullshit exists to catch. Don't add without real data behind it.
-- **History/streak/gamification views** (Daily Bullshit Diet, etc.) — needs the persistence layer first.
+- **History/streak/gamification views** (Daily Bullshit Diet, etc.) — local per-device history is now implemented (§14); a *synced-across-devices* version still needs the account/persistence layer above. Streak/gamification cosmetic layers not started.
 
 ---
 
@@ -171,3 +173,49 @@ No names, no emails, no raw content stored beyond what's needed for the hash/ded
 ## 13. Explicitly out of scope, flagged as a real risk
 
 **Do not build "predicted spread," "read ratio," "share ratio," or similar forecasting numbers without real aggregated telemetry behind them.** This came up twice now (once from ChatGPT feedback, addressed in §8; reinforced again as "Cognitive Threat Intelligence" framing) and the answer is the same both times: presenting invented numbers as measured fact is precisely the failure mode Bullshit exists to catch in *other* content. This isn't "later" — it's a standing guardrail, revisit only once there's real scale data to back it, and even then be transparent about methodology.
+
+## 14. Local history (implemented)
+
+`js/history.js` wraps IndexedDB to save every real analysis (text or image) on-device — score, verdict, note, tricks, a short preview of the input, timestamp. No backend, works offline, nothing is sent anywhere. Accessible via a **History** icon in the header (opens the same overlay-panel pattern as Settings), showing newest-first, tap to reopen a past receipt, swipe-delete or clear all.
+
+This is deliberately built as the local half of the anonymous event schema from §12 — when accounts eventually exist, this IndexedDB store is exactly what gets migrated up to the account on first sign-in, so nobody loses history by creating one. Each receipt's BS ID (§11) is generated once and stored permanently on the entry (`r.id`), so reopening an old receipt from history always shows the same ID it originally displayed — `generateBsId()` is only used as a fallback for brand-new receipts, never recomputed for stored ones (recomputing could drift if reopened on a different day, since the hash includes a date component).
+
+## 15. Feedback & Privacy (implemented)
+
+Both live inside the Settings panel:
+- **"📩 Send feedback"** — a `mailto:` link to `kurodigitalarchitects@gmail.com` with a pre-filled subject/body, so reporting a bug is one tap from any screen in the app. This exists because every single bug found during development was found by the founder manually screenshotting something broken — real beta users won't do that unprompted unless it's this easy.
+- **"🔒 Privacy & Data"** — opens a dedicated overlay panel (same pattern as Settings/History) with five expandable sections: what gets sent off-device and to whom (names Groq/OpenRouter explicitly), what's *not* collected (no accounts, no ad tracking, no analytics), how local history works, how IP-based rate limiting works (stored max 1 hour, then auto-deleted), and contact info. Written in plain language, not legalese — the standard applied is "would this survive Bullshit analyzing itself," which is a real test worth reapplying if this copy is ever revised.
+
+## 16. Visual identity v2
+
+Palette changed from the original "Forensic Paper" (charcoal/cream/bright-red/amber) to a deliberate blend of two alternative directions that were mocked up and compared side-by-side (see `palette-preview.html` if it still exists locally — not part of the deployed app):
+- **Ink-navy background** (`#10151A`) instead of warm charcoal — cooler, more institutional.
+- **Burgundy stamp/accent** (`#8B3A3A`) instead of bright red — reads as premium ink rather than alarm-red.
+- **Muted gold** (`#C79143`) instead of bright amber.
+- **Warm parchment paper** (`#EAE0C8`) — kept warm even though the background went cooler, deliberately blending the two source directions rather than picking one wholesale.
+
+App icon also regenerated in this palette (same ring+"BS" concept as before — five alternative logo directions were sketched and compared, including a receipt-scroll shape and a magnifying-glass concept, but the recolored original ring won out as the strongest option: already proven, already recognizable).
+
+**Polish layer added on top of the repaint:** the Settings panel was restructured from an inline dropdown (which visually blended into the page behind it) into a true overlay — dim scrim, blur backdrop, slide animation, tap-outside-to-close. Buttons got tactile tap feedback (a light diagonal shimmer sweep + press-depth, evoking "touching glass" without making the flat print-style surfaces literally translucent, which would have fought the receipt aesthetic). Icons get a small pop/twist on tap; the camera icon specifically also gets a rare, brief idle nudge (~every 6s) as a quiet invitation to tap it. The wordmark has a very faint persistent breathing glow. The Kuro Digital footer badge — treated deliberately as prime real estate, since it's the app's actual lead-gen surface — got real glass treatment (frosted blur, bright top-edge rim highlight) plus a persistent light-sweep animation.
+
+**Also added:** an "Upload a screenshot" button alongside the camera button. The camera button's `capture="environment"` attribute forces Android straight into the live camera, skipping the gallery — so a second file input *without* that attribute was added specifically so people can analyze a screenshot they already took (e.g. of a Facebook/Instagram post) without needing to physically point the camera at their own screen.
+
+## 17. Operational hardening (in progress — pre-beta)
+
+Prompted by an honest self-audit before any public sharing. Status of each:
+
+- **Rate limit raised 20→60→200/hour per IP.** Important nuance worth remembering: this is *per IP address*, not one shared pool — but carrier-grade NAT (common on African mobile networks) means genuinely different real users can share a public IP, so "per IP" can still functionally mean "per group of strangers on one carrier." That's why it's set generously rather than tightly, and why it may need raising further once there's real traffic data.
+- **Error alerting: code-complete, not yet activated.** See §7 — needs `NTFY_TOPIC` set and the ntfy app installed to actually start pushing notifications. This is the next immediate step.
+- **Git-based auto-deploy: attempted, blocked, parked.** See §7 — retry from desktop.
+- **`WORKER_VERSION` canary marker** added to `worker.js` — visiting the Worker's root URL shows `Bullshit™ proxy is running. (vX)`. Bump this constant with any meaningful change; it's the fastest way to confirm a deploy (manual or eventually Git-based) actually landed, without digging through dashboard tabs.
+- **Not yet done:** automated tests, a staging environment, iOS testing (no iOS device available to the founder — untested, share-target is known to not work on iOS/Safari, but paste/camera/upload should still function via plain browser inputs).
+
+## 18. Public rollout plan
+
+Sequenced deliberately to control the volume and visibility of whatever breaks, since every bug so far has been found by manual testing rather than any monitoring system (partially addressed by §17, not fully yet):
+
+- **Phase 0 — private beta (current target).** Share directly (WhatsApp/DM, not public posts) with ~10-20 people personally known to the founder. Goal: surface real-device/real-stranger confusion and bugs at a volume the rate limit and founder's attention can actually absorb.
+- **Phase 1 — soft public push.** Once Phase 0 runs clean for a few days: one modest, lower-traffic public post (relevant subreddit, LinkedIn to existing network) — not a big blast. Watch how the rate limit and Groq's own quota hold up under real strangers.
+- **Phase 2 — real social push.** Once Phase 1 holds up. The camera feature ("point your phone at a suspicious post, get an instant verdict") is genuinely strong short-form video material (TikTok/Reels) — this is the natural point to go wide.
+
+**Checklist before starting Phase 0:** rate limit reviewed (done, §17) · feedback link live (done, §15) · privacy panel live (done, §15) · ntfy alerting actually activated (pending) · one full clean-install test pass across text/camera/upload/share right before sharing.

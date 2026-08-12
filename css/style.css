@@ -250,6 +250,37 @@ body{
   margin:0;
 }
 
+.settings-link-btn{
+  display:block;
+  width:100%;
+  text-align:center;
+  text-decoration:none;
+  margin-top:0.6rem;
+  box-sizing:border-box;
+}
+
+.privacy-section{
+  border-top:1px solid var(--border-subtle);
+  padding:0.8rem 0;
+}
+.privacy-section summary{
+  cursor:pointer;
+  font-family:var(--mono);
+  font-size:0.78rem;
+  font-weight:700;
+  color:var(--paper);
+}
+.privacy-section p{
+  font-size:0.75rem;
+  color:var(--paper-dim);
+  opacity:0.85;
+  line-height:1.55;
+  margin:0.6rem 0 0;
+}
+.privacy-section a{
+  color:var(--amber);
+}
+
 .history-header{
   display:flex;
   justify-content:space-between;

@@ -24,11 +24,14 @@ const historyToggle = $('historyToggle');
 const historyPanel = $('historyPanel');
 const historyList = $('historyList');
 const clearHistoryBtn = $('clearHistoryBtn');
+const privacyPanel = $('privacyPanel');
+const privacyLinkBtn = $('privacyLinkBtn');
 
-// ---- Overlay panels (settings + history) — shared scrim, mutually exclusive ----
+// ---- Overlay panels (settings + history + privacy) — shared scrim, mutually exclusive ----
 function closeAllPanels(){
   settingsPanel.classList.remove('open');
   historyPanel.classList.remove('open');
+  privacyPanel.classList.remove('open');
   settingsScrim.classList.add('hidden');
 }
 function openPanel(panel){
@@ -36,6 +39,7 @@ function openPanel(panel){
   panel.classList.add('open');
   settingsScrim.classList.remove('hidden');
 }
+privacyLinkBtn.addEventListener('click', () => openPanel(privacyPanel));
 settingsToggle.addEventListener('click', () => {
   settingsToggle.classList.remove('spin');
   void settingsToggle.offsetWidth;

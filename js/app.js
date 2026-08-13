@@ -301,10 +301,10 @@ function mergeResults(h, llm){
 }
 
 const VERDICT_LABELS = {
-  bullshit: { label: 'BULLSHIT', icon: 'bs-icon-bullshit', cls: '' },
-  clean: { label: 'CLEAN', icon: 'bs-icon-clean', cls: 'ok' },
-  caution: { label: 'PROCEED WITH CAUTION', icon: 'bs-icon-caution', cls: 'caution' },
-  opinion: { label: 'OPINION', icon: 'bs-icon-opinion', cls: 'opinion' }
+  bullshit: { label: 'BULLSHIT', icon: 'bs-icon-bullshit', cls: '', colorVar: '--stamp-red' },
+  clean: { label: 'CLEAN', icon: 'bs-icon-clean', cls: 'ok', colorVar: '--ok-green' },
+  caution: { label: 'PROCEED WITH CAUTION', icon: 'bs-icon-caution', cls: 'caution', colorVar: '--amber' },
+  opinion: { label: 'OPINION', icon: 'bs-icon-opinion', cls: 'opinion', colorVar: '--opinion-grey' }
 };
 
 async function persistReceipt(r, preview){
@@ -345,38 +345,78 @@ function generateBsId(r){
   return `BS-${year}-${positive}`;
 }
 
-function resolveIconSvg(iconId, className){
-  // html2canvas can't reliably render <use> references, even inline
-  // ones — so for anything that might get captured to an image, we
-  // build a standalone <svg> with the real path data embedded directly.
-  const symbol = document.getElementById(iconId);
-  if(!symbol) return '';
-  const viewBox = symbol.getAttribute('viewBox') || '0 0 24 24';
-  return `<svg class="${className}" viewBox="${viewBox}" fill="none" stroke="currentColor">${symbol.innerHTML}</svg>`;
+function cssVar(name){
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 }
 
-function buildCaptureHtml(r){
-  // A parallel, capture-safe version of the receipt: no <details>
-  // (html2canvas renders these with stray numbering), and no SVG icons
-  // at all — html2canvas's inline SVG support is unreliable enough
-  // (nested <svg>/<path>, currentColor inheritance) that it was very
-  // likely silently dropping the whole stamp element, not just the
-  // icon. The border/color/text already carry the visual identity
-  // without it.
-  const v = VERDICT_LABELS[r.verdict] || VERDICT_LABELS.caution;
+// Rasterizes one of our sprite icons to a PNG data URL using the
+// browser's own native SVG renderer (via an offscreen Image + canvas),
+// rather than asking html2canvas to draw the SVG itself — html2canvas
+// re-implements SVG rendering and handles it unreliably (this was the
+// actual cause of the missing stamp/icons in shared images, confirmed
+// across several rounds of testing), but it draws plain raster <img>
+// elements perfectly well. Color must be baked in explicitly since a
+// detached, standalone SVG can't rely on inherited `currentColor`.
+function rasterizeIcon(iconId, color, size = 96){
+  return new Promise((resolve) => {
+    const symbol = document.getElementById(iconId);
+    if(!symbol){ resolve(null); return; }
+    const viewBox = symbol.getAttribute('viewBox') || '0 0 24 24';
+    const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" width="${size}" height="${size}" fill="none" stroke="${color}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${symbol.innerHTML}</svg>`;
+    const svgBlob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
 
-  const tricksHtml = (r.tricks && r.tricks.length)
-    ? `<div class="tricks">
-        ${r.tricks.map(t => {
-          const cleanName = t.name.replace(/^\S+\s/, '');
-          return `
-          <div class="trick-item">
-            <div class="trick-item-title"><span class="capture-bullet">●</span> <span>${escapeHtml(cleanName)}</span></div>
-            <p>${escapeHtml(t.explain)}</p>
-          </div>`;
-        }).join('')}
-       </div>`
+async function buildCaptureHtml(r){
+  // A parallel, capture-safe version of the receipt: no <details>
+  // (html2canvas renders these with stray numbering), and icons are
+  // pre-rasterized to PNGs (see rasterizeIcon) rather than left as
+  // SVG, since that's what actually made them render reliably.
+  const v = VERDICT_LABELS[r.verdict] || VERDICT_LABELS.caution;
+  const stampColor = cssVar(v.colorVar) || '#8B3A3A';
+  const inkColor = cssVar('--ink') || '#241C14';
+
+  const stampIconPng = await rasterizeIcon(v.icon, stampColor, 72);
+  const stampIconHtml = stampIconPng
+    ? `<img src="${stampIconPng}" class="stamp-icon-img" alt="">`
     : '';
+
+  let tricksHtml = '';
+  if(r.tricks && r.tricks.length){
+    const trickIconIds = r.tricks.map(t => {
+      const taxEntry = findTaxonomyByName(t.name);
+      return t.icon || (taxEntry && taxEntry.icon) || null;
+    });
+    const trickIconPngs = await Promise.all(
+      trickIconIds.map(id => id ? rasterizeIcon(id, inkColor, 48) : Promise.resolve(null))
+    );
+    tricksHtml = `<div class="tricks">
+      ${r.tricks.map((t, i) => {
+        const cleanName = t.name.replace(/^\S+\s/, '');
+        const iconHtml = trickIconPngs[i]
+          ? `<img src="${trickIconPngs[i]}" class="trick-icon-img" alt="">`
+          : `<span class="capture-bullet">●</span>`;
+        return `
+        <div class="trick-item">
+          <div class="trick-item-title">${iconHtml}<span>${escapeHtml(cleanName)}</span></div>
+          <p>${escapeHtml(t.explain)}</p>
+        </div>`;
+      }).join('')}
+     </div>`;
+  }
 
   return `
     <div class="receipt-title">Bullshit™ Receipt</div>
@@ -384,7 +424,7 @@ function buildCaptureHtml(r){
     <div class="receipt-row"><span class="k">BS Score</span><span class="v">${r.score}/100</span></div>
     ${r.domain ? `<div class="receipt-row"><span class="k">Source</span><span class="v">${escapeHtml(r.domain)}</span></div>` : ''}
     <hr class="receipt-divider">
-    <div class="verdict-stamp ${v.cls}" style="opacity:1;animation:none;">${v.label}</div>
+    <div class="verdict-stamp ${v.cls}" style="opacity:1;animation:none;">${stampIconHtml}${v.label}</div>
     <p class="receipt-note">${escapeHtml(r.note)}</p>
     ${tricksHtml}
   `;
@@ -460,10 +500,10 @@ shareReceiptBtn.addEventListener('click', async () => {
     const canvas = await html2canvas(receiptEl, {
       backgroundColor: '#EDE7D9',
       scale: 2,
-      onclone: (clonedDoc) => {
+      onclone: async (clonedDoc) => {
         const clonedReceipt = clonedDoc.getElementById('receipt');
         if(clonedReceipt){
-          clonedReceipt.innerHTML = buildCaptureHtml(lastResult);
+          clonedReceipt.innerHTML = await buildCaptureHtml(lastResult);
         }
       }
     });

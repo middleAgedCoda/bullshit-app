@@ -1,4 +1,4 @@
-const CACHE_NAME = 'bullshit-v20';
+const CACHE_NAME = 'bullshit-v21';
 const SHELL_FILES = [
   '/bullshit-app/index.html',
   '/bullshit-app/share-target.html',

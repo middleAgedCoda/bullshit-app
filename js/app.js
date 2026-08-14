@@ -389,9 +389,19 @@ async function buildCaptureHtml(r){
   const stampColor = cssVar(v.colorVar) || '#8B3A3A';
   const inkColor = cssVar('--ink') || '#241C14';
 
-  const stampIconPng = await rasterizeIcon(v.icon, stampColor, 72);
+  // Explicit pixel display size, computed from the live root font-size
+  // (matches the on-screen 1.3rem/1.1rem sizing) — set as HTML width/
+  // height ATTRIBUTES below, not just a CSS class, since html2canvas
+  // doesn't reliably apply class-based sizing to freshly injected
+  // <img> elements and was rendering them at raw canvas resolution.
+  const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const stampDisplayPx = Math.round(rootPx * 1.3);
+  const trickDisplayPx = Math.round(rootPx * 1.1);
+  const RASTER_SCALE = 3; // oversample for crispness at html2canvas's own 2x capture scale
+
+  const stampIconPng = await rasterizeIcon(v.icon, stampColor, stampDisplayPx * RASTER_SCALE);
   const stampIconHtml = stampIconPng
-    ? `<img src="${stampIconPng}" class="stamp-icon-img" alt="">`
+    ? `<img src="${stampIconPng}" width="${stampDisplayPx}" height="${stampDisplayPx}" class="stamp-icon-img" alt="">`
     : '';
 
   let tricksHtml = '';
@@ -401,13 +411,13 @@ async function buildCaptureHtml(r){
       return t.icon || (taxEntry && taxEntry.icon) || null;
     });
     const trickIconPngs = await Promise.all(
-      trickIconIds.map(id => id ? rasterizeIcon(id, inkColor, 48) : Promise.resolve(null))
+      trickIconIds.map(id => id ? rasterizeIcon(id, inkColor, trickDisplayPx * RASTER_SCALE) : Promise.resolve(null))
     );
     tricksHtml = `<div class="tricks">
       ${r.tricks.map((t, i) => {
         const cleanName = t.name.replace(/^\S+\s/, '');
         const iconHtml = trickIconPngs[i]
-          ? `<img src="${trickIconPngs[i]}" class="trick-icon-img" alt="">`
+          ? `<img src="${trickIconPngs[i]}" width="${trickDisplayPx}" height="${trickDisplayPx}" class="trick-icon-img" alt="">`
           : `<span class="capture-bullet">●</span>`;
         return `
         <div class="trick-item">

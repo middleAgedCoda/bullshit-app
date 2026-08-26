@@ -56,6 +56,13 @@ historyToggle.addEventListener('click', () => {
   }
 });
 settingsScrim.addEventListener('click', closeAllPanels);
+
+// Explicit, always-reachable close buttons inside each panel — doesn't
+// depend on the scrim being tappable or any z-index stacking, since
+// the button lives inside the panel's own visible content.
+document.querySelectorAll('.panel-close-btn').forEach(btn => {
+  btn.addEventListener('click', closeAllPanels);
+});
 saveKeysBtn.addEventListener('click', () => {
   saveKeys({ groq: groqKeyInput.value.trim(), openrouter: orKeyInput.value.trim() });
   closeAllPanels();

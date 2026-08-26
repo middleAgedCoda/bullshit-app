@@ -259,6 +259,16 @@ body{
   box-sizing:border-box;
 }
 
+.coffee-btn{
+  border-color:var(--amber);
+  color:var(--amber);
+  background:rgba(199,145,67,0.08);
+}
+.coffee-btn:active{
+  transform:scale(0.96);
+  background:rgba(199,145,67,0.16);
+}
+
 .privacy-section{
   border-top:1px solid var(--border-subtle);
   padding:0.8rem 0;

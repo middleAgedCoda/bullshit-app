@@ -91,7 +91,7 @@ body{
   flex-direction:column;
   gap:0.15rem;
   position:relative;
-  z-index:10;
+  z-index:1000;
 }
 .wordmark{
   font-family:var(--mono);

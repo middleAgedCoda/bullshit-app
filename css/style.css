@@ -269,6 +269,26 @@ body{
   background:rgba(199,145,67,0.16);
 }
 
+.panel-close-btn{
+  position:fixed;
+  top:1.3rem;
+  right:1.4rem;
+  width:2rem;
+  height:2rem;
+  border-radius:50%;
+  border:1px solid var(--border-subtle);
+  background:var(--charcoal-2);
+  color:var(--paper);
+  font-size:0.9rem;
+  line-height:1;
+  cursor:pointer;
+  z-index:5;
+}
+.panel-close-btn:active{
+  border-color:var(--amber);
+  transform:scale(0.9);
+}
+
 .privacy-section{
   border-top:1px solid var(--border-subtle);
   padding:0.8rem 0;
